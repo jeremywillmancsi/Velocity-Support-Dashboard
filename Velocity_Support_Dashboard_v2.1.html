@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Velocity Support Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0f2240;--navy2:#1a3560;--blue:#2563eb;--blue-lt:#dbeafe;
+  --green:#16a34a;--green-lt:#dcfce7;--orange:#ea580c;--orange-lt:#ffedd5;
+  --red:#dc2626;--red-lt:#fee2e2;--yellow:#ca8a04;--yellow-lt:#fef9c3;
+  --gray:#64748b;--gray-lt:#f1f5f9;--border:#e2e8f0;--white:#ffffff;
+  --text:#0f172a;--text2:#475569;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+}
+body{font-family:var(--font);background:#f8fafc;color:var(--text);min-height:100vh}
+#load-screen{position:fixed;inset:0;background:var(--navy);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;transition:opacity .4s}
+#load-screen.hidden{opacity:0;pointer-events:none}
+.ls-logo{font-size:13px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:32px}
+.ls-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:40px 48px;text-align:center;max-width:420px;width:90%}
+.ls-icon{width:56px;height:56px;background:rgba(37,99,235,.25);border-radius:14px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center}
+.ls-icon svg{width:28px;height:28px;stroke:rgba(255,255,255,.8);fill:none;stroke-width:1.8}
+.ls-card h2{font-size:20px;font-weight:600;color:#fff;margin-bottom:8px}
+.ls-card p{font-size:13px;color:rgba(255,255,255,.5);line-height:1.6;margin-bottom:28px}
+.ls-btn{display:inline-flex;align-items:center;gap:10px;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:13px 28px;font-size:14px;font-weight:500;font-family:var(--font);cursor:pointer;transition:background .15s,transform .1s}
+.ls-btn:hover{background:#1d4ed8}.ls-btn:active{transform:scale(.98)}
+.ls-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.ls-hint{font-size:11px;color:rgba(255,255,255,.3);margin-top:16px}
+#file-input{display:none}
+.topbar{background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:54px;position:sticky;top:0;z-index:50;gap:16px}
+.topbar-left{display:flex;align-items:center;gap:14px;min-width:0}
+.topbar-logo{font-size:11px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.4);white-space:nowrap}
+.topbar-divider{width:1px;height:20px;background:rgba(255,255,255,.15)}
+.topbar-title{font-size:14px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.refresh-btn{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:500;color:rgba(255,255,255,.85);cursor:pointer;transition:background .15s;font-family:var(--font);white-space:nowrap}
+.refresh-btn:hover{background:rgba(255,255,255,.18)}
+.refresh-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0}
+.last-loaded{font-size:11px;color:rgba(255,255,255,.6);white-space:nowrap}
+/* Global filter bar sits below topbar, above nav tabs */
+.gf-bar{background:var(--navy2);border-bottom:1px solid rgba(255,255,255,.08);padding:8px 24px;display:none;align-items:center;gap:10px;flex-wrap:wrap}
+.gf-bar.visible{display:flex}
+.gf-label{font-size:11px;font-weight:600;color:rgba(255,255,255,.5);white-space:nowrap;text-transform:uppercase;letter-spacing:.07em}
+.gf-select{font-size:12px;font-weight:500;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:7px;padding:5px 10px;color:#fff;font-family:var(--font);cursor:pointer;outline:none}
+.gf-select:focus{border-color:rgba(255,255,255,.4)}
+.gf-select option{background:var(--navy2);color:#fff}
+.gf-divider{width:1px;height:18px;background:rgba(255,255,255,.15)}
+.gf-badge{font-size:11px;color:rgba(255,255,255,.45);white-space:nowrap}
+.nav{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:0;overflow-x:auto}
+.nav::-webkit-scrollbar{display:none}
+.navbtn{background:transparent;border:none;border-bottom:2px solid transparent;padding:12px 16px;font-size:13px;font-weight:500;color:var(--gray);cursor:pointer;white-space:nowrap;font-family:var(--font);transition:color .15s}
+.navbtn:hover{color:var(--navy)}.navbtn.active{color:var(--navy);border-bottom-color:var(--blue)}
+.content{padding:20px 24px;max-width:1400px;margin:0 auto}
+.section{display:none}.section.active{display:block}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:#fff;border-radius:10px;padding:14px 16px;border:1px solid var(--border);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.kpi.blue::before{background:var(--blue)}.kpi.green::before{background:var(--green)}
+.kpi.orange::before{background:var(--orange)}.kpi.red::before{background:var(--red)}.kpi.teal::before{background:#0891b2}
+.kpi .val{font-size:26px;font-weight:600;line-height:1;margin-bottom:4px}
+.kpi.blue .val{color:var(--blue)}.kpi.green .val{color:var(--green)}
+.kpi.orange .val{color:var(--orange)}.kpi.red .val{color:var(--red)}.kpi.teal .val{color:#0891b2}
+.kpi .lbl{font-size:11px;color:var(--gray);font-weight:400}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+@media(max-width:860px){.g2,.g3{grid-template-columns:1fr}}
+.card{background:#fff;border-radius:10px;padding:16px 18px;border:1px solid var(--border)}
+.card-title{font-size:11px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
+.chartbox{position:relative;width:100%}
+.toggle-row{display:flex;gap:5px;margin-bottom:10px}
+.tbtn{background:var(--gray-lt);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:11px;font-weight:500;color:var(--gray);cursor:pointer;font-family:var(--font)}
+.tbtn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px;font-size:11px;color:var(--gray)}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:500}
+.b-red{background:var(--red-lt);color:#991b1b}.b-orange{background:var(--orange-lt);color:#92400e}
+.b-yellow{background:var(--yellow-lt);color:#854d0e}.b-green{background:var(--green-lt);color:#166534}
+.b-blue{background:var(--blue-lt);color:#1e40af}.b-gray{background:var(--gray-lt);color:#475569}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:7px 9px;font-size:10px;font-weight:600;color:var(--gray);background:var(--gray-lt);border-bottom:1px solid var(--border);white-space:nowrap;text-transform:uppercase;letter-spacing:.05em}
+td{padding:7px 9px;border-bottom:1px solid var(--gray-lt);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafbfc}
+.sort-btn{background:none;border:none;cursor:pointer;color:#cbd5e1;font-size:10px;padding:0 2px;vertical-align:middle}
+.sort-btn:hover{color:var(--navy)}
+.tbl-wrap{overflow-x:auto;max-height:440px;overflow-y:auto;border:1px solid var(--border);border-radius:10px}
+.sticky-h th{position:sticky;top:0;z-index:1}
+.sc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.sc-card{background:#fff;border-radius:12px;padding:16px;border:1px solid var(--border);border-top:3px solid var(--border);overflow:hidden}
+.sc-card.flag-red{border-top-color:var(--red)}.sc-card.flag-orange{border-top-color:var(--orange)}.sc-card.flag-green{border-top-color:var(--green)}
+/* Header */
+.sc-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.sc-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;letter-spacing:.02em}
+.sc-header-info{min-width:0;flex:1}
+.sc-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.sc-product{font-size:11px;color:var(--gray);margin-bottom:4px}
+.tier-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
+.tier-elite{background:#dcfce7;color:#14532d}.tier-strong{background:#dbeafe;color:#1e3a8a}.tier-attention{background:#fee2e2;color:#7f1d1d}
+/* Stat tiles */
+.sc-stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.sc-stat{background:var(--gray-lt);border-radius:8px;padding:10px 12px}
+.sc-stat .sv{font-size:19px;font-weight:700;line-height:1;margin-bottom:1px}
+.sc-stat .sl{font-size:10px;color:var(--gray);font-weight:500}
+.sc-stat .sm{font-size:10px;color:var(--gray);margin-top:2px}
+/* Metric rows with visual bars */
+.sc-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:3px}
+.sc-row .rl{color:var(--text2)}
+.sc-row .rv{font-weight:600;font-size:12px}
+.sc-bar-track{height:5px;background:var(--border);border-radius:3px;margin-bottom:9px;overflow:hidden}
+.sc-bar-fill{height:100%;border-radius:3px;transition:width .5s ease}
+/* Metric tiles (kept for open/age) */
+.sc-metrics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px}
+.sc-m{background:var(--gray-lt);border-radius:7px;padding:7px 9px;border-left:2px solid var(--border);position:relative;cursor:default}
+.sc-m.ok{border-left-color:var(--green);background:var(--green-lt)}
+.sc-m.warn{border-left-color:var(--orange);background:var(--orange-lt)}
+.sc-m.danger{border-left-color:var(--red);background:var(--red-lt)}
+.sc-m .v{font-size:16px;font-weight:600;line-height:1.1}.sc-m .l{font-size:9px;color:var(--gray);margin-top:2px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.bar-mini{height:6px;border-radius:3px;background:var(--border);margin-top:8px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .5s ease}
+/* Mini chart */
+.sc-chart-label{font-size:10px;color:var(--gray);font-weight:500;margin-bottom:4px}
+.sc-chart-wrap{position:relative;height:56px;width:100%}
+/* Tooltip host — used on stat tiles, bar rows, and metric tiles */
+.has-tip{position:relative;cursor:default}
+.has-tip .tip{
+  display:none;position:absolute;bottom:calc(100% + 8px);
+  left:0;transform:none;
+  background:var(--navy);color:#fff;font-size:11px;line-height:1.5;font-weight:400;
+  padding:8px 11px;border-radius:7px;width:230px;z-index:300;text-align:left;
+  box-shadow:0 4px 14px rgba(0,0,0,.28);pointer-events:none;white-space:normal;
+}
+.has-tip .tip::after{content:'';position:absolute;top:100%;left:18px;border:5px solid transparent;border-top-color:var(--navy)}
+.has-tip:hover .tip{display:block}
+.filter-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;background:#fff;padding:10px 14px;border-radius:10px;border:1px solid var(--border)}
+.filter-row label{font-size:11px;font-weight:600;color:var(--gray)}
+select,input[type=text]{font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:#fff;color:var(--text);outline:none;font-family:var(--font)}
+select:focus,input[type=text]:focus{border-color:var(--blue)}
+input[type=text]{min-width:190px}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}
+.ss{background:#fff;border-radius:8px;padding:10px 13px;border:1px solid var(--border);display:flex;flex-direction:column;gap:2px}
+.ss .sv{font-size:19px;font-weight:600}.ss .sl{font-size:10px;color:var(--gray);font-weight:500}
+.pag{display:flex;gap:6px;align-items:center;margin-top:8px;font-size:12px;color:var(--gray);padding:4px 0}
+.pag button{background:#fff;border:1px solid var(--border);border-radius:6px;padding:4px 11px;cursor:pointer;font-size:12px;font-family:var(--font)}
+.pag button:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}
+.pag button:disabled{opacity:.3;cursor:default}
+.sc-m .tip{display:none}
+.sc-m:hover .tip{display:block}
+.sc-bar-wrap{position:relative;cursor:default;margin-top:9px}
+.sc-bar-wrap .tip{display:none}
+.sc-bar-wrap:hover .tip{display:block}
+.tip .tip-label{font-weight:600;font-size:11px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.tip .tip-formula{font-family:var(--mono);font-size:10px;color:#93c5fd;margin:3px 0 5px}
+.tip .tip-scope{font-size:10px;color:rgba(255,255,255,.5);font-style:italic;margin-top:4px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ── Scorecard email button ── */
+.sc-email-btn{display:flex;align-items:center;gap:6px;width:100%;margin-top:10px;padding:7px 12px;background:var(--gray-lt);border:1px solid var(--border);border-radius:7px;font-size:12px;font-weight:500;color:var(--gray);cursor:pointer;font-family:var(--font);justify-content:center;transition:background .15s,color .15s,border-color .15s}
+.sc-email-btn:hover{background:var(--blue-lt);color:var(--blue);border-color:#bfdbfe}
+.sla-row{display:grid;grid-template-columns:90px 1fr 70px 80px;align-items:center;gap:10px;margin-bottom:10px}
+.sla-row:last-child{margin-bottom:0}
+.sla-sev{font-size:12px;font-weight:600;color:var(--text)}
+.sla-bar-track{height:10px;background:var(--gray-lt);border-radius:5px;overflow:hidden;position:relative}
+.sla-bar-fill{height:100%;border-radius:5px;transition:width .6s ease}
+.sla-meta{font-size:11px;color:var(--gray);text-align:right;white-space:nowrap}
+.sla-pct{font-size:14px;font-weight:700;text-align:right;white-space:nowrap}
+.ins-card{background:#fff;border-radius:10px;padding:14px 16px;border:1px solid var(--border)}
+.ins-card-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ins-card-title{font-size:12px;font-weight:600;color:var(--text);flex:1}
+.ins-icon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.ins-icon-blue{background:var(--blue-lt)}.ins-icon-orange{background:var(--orange-lt)}
+.ins-icon-red{background:var(--red-lt)}.ins-icon-teal{background:#ccfbf1}
+.ins-icon-purple{background:#f3e8ff}
+.ins-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px}
+.ins-badge.good{background:var(--green-lt);color:#166534}
+.ins-badge.warn{background:var(--yellow-lt);color:#854d0e}
+.ins-badge.alert{background:var(--red-lt);color:#991b1b}
+.ins-badge.neutral{background:var(--gray-lt);color:var(--gray)}
+.ins-body{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:8px}
+.ins-body strong{color:var(--text);font-weight:600}
+.ins-action{font-size:11px;color:var(--blue);background:var(--blue-lt);border-radius:6px;padding:6px 9px;line-height:1.5}
+.ins-action::before{content:'→ ';font-weight:600}
+.ins-table{width:100%;border-collapse:collapse;font-size:11px}
+.ins-table th{font-size:10px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.04em;padding:4px 6px;border-bottom:1px solid var(--border);background:var(--gray-lt)}
+.ins-table td{padding:5px 6px;border-bottom:1px solid var(--gray-lt);vertical-align:middle}
+.ins-table tr:last-child td{border-bottom:none}
+.ins-table tr:hover td{background:#fafbfc}
+.ins-kw-cloud{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0}
+.ins-kw{display:inline-flex;align-items:center;gap:4px;background:var(--gray-lt);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:500;color:var(--text2)}
+.ins-kw .kw-count{font-size:9px;color:var(--gray);font-weight:400}
+.ins-kw.kw-hot{background:var(--red-lt);color:#991b1b}
+.ins-kw.kw-warm{background:var(--orange-lt);color:#92400e}
+.ins-kw.kw-cool{background:var(--blue-lt);color:#1e40af}
+.ins-loading{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gray);padding:8px 0}
+.ins-loading svg{animation:spin 1s linear infinite}
+@media(max-width:860px){#sec-insights .g2-ins{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="load-screen">
+  <div class="ls-logo">Velocity Solutions</div>
+  <div class="ls-card">
+    <div class="ls-icon"><svg viewBox="0 0 24 24"><path d="M9 17H7A5 5 0 017 7h2M15 7h2a5 5 0 010 10h-2M8 12h8"/></svg></div>
+    <h2>Support Operations Dashboard</h2>
+    <p>Load your Excel export to populate the dashboard. All processing happens locally in your browser — no data leaves your computer.</p>
+    <button class="ls-btn" onclick="document.getElementById('file-input').click()">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+      Select Excel file
+    </button>
+    <div class="ls-hint">Accepts .xlsx files exported from your CRM</div>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFile(this)">
+
+<div id="dashboard" style="display:none">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-logo">Velocity</span>
+      <div class="topbar-divider"></div>
+      <span class="topbar-title">Support Operations Dashboard</span>
+    </div>
+    <div class="topbar-right">
+      <span class="last-loaded" id="last-loaded"></span>
+      <button class="refresh-btn" id="cfg-btn" onclick="toggleConfig()" style="display:none">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Configure
+      </button>
+      <button class="refresh-btn" id="pdf-btn" onclick="exportPDF()" style="display:none">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Export PDF
+      </button>
+      <button class="refresh-btn" onclick="document.getElementById('file-input').click()">
+        <svg viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Load new data
+      </button>
+    </div>
+  </div>
+
+  <!-- GLOBAL FILTER BAR -->
+  <div class="gf-bar" id="gf-bar">
+    <span class="gf-label">Period</span>
+    <select class="gf-select" id="gf-type" onchange="gfTypeChange()">
+      <option value="fy">Fiscal year</option>
+      <option value="quarter">FY quarter</option>
+      <option value="month">Month</option>
+      <option value="week">Week</option>
+    </select>
+    <select class="gf-select" id="gf-value" onchange="gfApply()"></select>
+    <div class="gf-divider"></div>
+    <span class="gf-badge" id="gf-range-label"></span>
+  </div>
+
+  <!-- CONFIG DRAWER -->
+  <div id="cfg-drawer" style="display:none;background:#fff;border-bottom:1px solid var(--border);padding:16px 24px">
+    <div style="max-width:680px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <span style="font-size:13px;font-weight:600;color:var(--text)">Scorecard configuration</span>
+        <button onclick="toggleConfig()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--gray);line-height:1">&times;</button>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Performance tier thresholds</div>
+      <div style="font-size:11px;color:var(--gray);margin-bottom:12px">Each tier requires <em>all three</em> conditions to be met. An engineer must satisfy every criterion for a tier to qualify — otherwise they fall to the next tier down. SLA compliance is skipped if no eligible closed cases exist in the period.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+        <!-- Elite -->
+        <div style="background:var(--green-lt);border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+            <span style="background:#dcfce7;color:#14532d;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600">Elite</span>
+          </div>
+          <label style="display:block;font-size:11px;color:var(--gray);margin-bottom:3px">Avg days to close ≤</label>
+          <input type="number" id="cfg-elite-days" min="0" max="365" value="10" style="width:100%;margin-bottom:8px;border-color:#bbf7d0">
+          <label style="display:block;font-size:11px;color:var(--gray);margin-bottom:3px">Open cases ≤</label>
+          <input type="number" id="cfg-elite-open" min="0" max="500" value="15" style="width:100%;margin-bottom:8px">
+          <label style="display:block;font-size:11px;color:var(--gray);margin-bottom:3px">SLA compliance ≥ (%)</label>
+          <input type="number" id="cfg-elite-sla" min="0" max="100" value="90" style="width:100%">
+        </div>
+        <!-- Strong -->
+        <div style="background:var(--blue-lt);border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+            <span style="background:#dbeafe;color:#1e3a8a;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600">Strong</span>
+          </div>
+          <label style="display:block;font-size:11px;color:var(--gray);margin-bottom:3px">Avg days to close ≤</label>
+          <input type="number" id="cfg-strong-days" min="0" max="365" value="30" style="width:100%;margin-bottom:8px;border-color:#bfdbfe">
+          <label style="display:block;font-size:11px;color:var(--gray);margin-bottom:3px">Open cases ≤</label>
+          <input type="number" id="cfg-strong-open" min="0" max="500" value="30" style="width:100%;margin-bottom:8px">
+          <label style="display:block;font-size:11px;color:var(--gray);margin-bottom:3px">SLA compliance ≥ (%)</label>
+          <input type="number" id="cfg-strong-sla" min="0" max="100" value="80" style="width:100%">
+        </div>
+        <!-- Needs Attention -->
+        <div style="background:var(--red-lt);border:1px solid #fecaca;border-radius:10px;padding:12px 14px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+            <span style="background:#fee2e2;color:#7f1d1d;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600">Needs Attention</span>
+          </div>
+          <div style="font-size:11px;color:var(--gray);line-height:1.5;padding-top:4px">Assigned automatically when an engineer does not meet the thresholds for <em>Elite</em> or <em>Strong</em>.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="applyConfig()" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font)">Apply &amp; refresh scorecards</button>
+        <button onclick="resetConfig()" style="background:transparent;color:var(--gray);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;font-family:var(--font)">Reset to defaults</button>
+        <span id="cfg-saved" style="font-size:11px;color:var(--green);display:none">✓ Applied</span>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:20px 0"></div>
+
+      <!-- Email configuration -->
+      <div style="font-size:11px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Scorecard email settings</div>
+      <div style="font-size:11px;color:var(--gray);margin-bottom:14px">Configure engineer email addresses and your name. These are saved in your browser and used to pre-fill scorecard emails. Email addresses are never transmitted anywhere.</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div>
+          <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:5px">Your name (appears in email sign-off)</label>
+          <input type="text" id="cfg-manager-name" placeholder="e.g. Sarah Johnson" style="width:100%;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:6px 10px">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:5px">Your email (CC on all scorecards)</label>
+          <input type="email" id="cfg-manager-email" placeholder="e.g. manager@velocitysolutions.com" style="width:100%;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:6px 10px">
+        </div>
+      </div>
+
+      <div style="font-size:11px;font-weight:500;color:var(--gray);margin-bottom:8px">Engineer email addresses</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px" id="cfg-email-fields">
+        <!-- populated by JS -->
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="saveEmailConfig()" style="background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font)">Save email settings</button>
+        <span id="cfg-email-saved" style="font-size:11px;color:var(--green);display:none">✓ Saved</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="navbtn active" onclick="showSec('overview')">Overview</button>
+    <button class="navbtn" onclick="showSec('volume')">Volume trend</button>
+    <button class="navbtn" onclick="showSec('aging')">Aging &amp; resolution</button>
+    <button class="navbtn" onclick="showSec('scorecards')">Scorecards</button>
+    <button class="navbtn" onclick="showSec('openqueue')">Open queue</button>
+    <button class="navbtn" onclick="showSec('insights')">✦ Insights</button>
+  </div>
+
+  <div class="content">
+    <!-- OVERVIEW -->
+    <div id="sec-overview" class="section active">
+      <div class="kpi-grid" id="kpi-grid"></div>
+      <div class="g2">
+        <div class="card"><div class="card-title">Weekly case volume</div>
+          <div class="legend"><span><i style="background:#2563eb"></i>Created</span><span><i style="background:#16a34a"></i>Closed</span></div>
+          <div class="chartbox" style="height:200px"><canvas id="c-weekly"></canvas></div>
+        </div>
+        <div class="card"><div class="card-title">Cases by product</div>
+          <div class="chartbox" style="height:200px"><canvas id="c-product"></canvas></div>
+        </div>
+      </div>
+      <div class="g3">
+        <div class="card"><div class="card-title">Open case aging <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">(all time)</span></div>
+          <div class="chartbox" style="height:185px"><canvas id="c-aging-ov"></canvas></div>
+        </div>
+        <div class="card"><div class="card-title">Resolution time</div>
+          <div class="chartbox" style="height:185px"><canvas id="c-res-ov"></canvas></div>
+        </div>
+        <div class="card"><div class="card-title">Open load by engineer <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">(all time)</span></div>
+          <div class="chartbox" style="height:185px"><canvas id="c-team-ov"></canvas></div>
+        </div>
+      </div>
+      <!-- SLA compliance -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <span class="card-title" style="margin-bottom:0">SLA compliance — closed cases in period</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;color:var(--gray)">Overall</span>
+            <span id="sla-overall-badge" class="badge"></span>
+            <span id="sla-overall-pct" style="font-size:22px;font-weight:700"></span>
+          </div>
+        </div>
+        <div id="sla-rows"></div>
+        <div style="font-size:10px;color:var(--gray);margin-top:10px">SLA targets: Critical ≤1 day &nbsp;·&nbsp; Medium ≤3 days &nbsp;·&nbsp; Low ≤7 days &nbsp;·&nbsp; General ≤14 days &nbsp;·&nbsp; Based on closed cases only</div>
+      </div>
+      <!-- Queue health -->
+      <div class="card" style="margin-top:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span class="card-title" style="margin-bottom:0">Queue health — open cases requiring attention</span>
+          <span style="font-size:10px;color:var(--gray)">All-time open cases only</span>
+        </div>
+        <div id="queue-health-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px"></div>
+        <div style="font-size:10px;color:var(--gray);margin-top:10px">Unassigned owner = cases owned by "Velocity Solutions Support" &nbsp;·&nbsp; Unassigned product = no Support Product entered &nbsp;·&nbsp; Unassigned FI = Customer Acct # 999</div>
+      </div>
+    </div>
+
+    <!-- VOLUME -->
+    <div id="sec-volume" class="section">
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-title">Case volume trend — <span id="vmode-lbl">weekly view</span></div>
+        <div class="toggle-row">
+          <button class="tbtn on" id="tbtn-w" onclick="setVM('weekly')">Weekly</button>
+          <button class="tbtn" id="tbtn-d" onclick="setVM('daily')">Daily</button>
+        </div>
+        <div class="legend"><span><i style="background:#2563eb"></i>Created</span><span><i style="background:#16a34a"></i>Closed</span></div>
+        <div class="chartbox" style="height:290px"><canvas id="c-volume"></canvas></div>
+      </div>
+      <div class="stat-grid" id="vol-stats"></div>
+    </div>
+
+    <!-- AGING -->
+    <div id="sec-aging" class="section">
+      <div class="g2" style="margin-bottom:12px">
+        <div class="card">
+          <div class="card-title">Open case aging <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">(all time)</span></div>
+          <div class="chartbox" style="height:190px"><canvas id="c-aging2"></canvas></div>
+          <div style="margin-top:10px"><table id="aging-tbl"></table></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Resolution time distribution</div>
+          <div class="chartbox" style="height:190px"><canvas id="c-res2"></canvas></div>
+          <div style="margin-top:10px"><table id="res-tbl"></table></div>
+        </div>
+      </div>
+      <div class="card"><div class="card-title">Key metrics</div><div class="stat-grid" id="aging-stats"></div></div>
+    </div>
+
+    <!-- SCORECARDS -->
+    <div id="sec-scorecards" class="section">
+      <p style="font-size:11px;color:var(--gray);margin-bottom:10px">Sorted by open case count &nbsp;·&nbsp; <span class="badge b-red">Red</span> high &nbsp;<span class="badge b-orange">Orange</span> moderate &nbsp;<span class="badge b-green">Green</span> healthy &nbsp;·&nbsp; Open/aging metrics are all-time; assigned &amp; resolution metrics reflect selected period</p>
+      <div class="sc-grid" id="sc-grid"></div>
+    </div>
+
+    <!-- OPEN QUEUE -->
+    <div id="sec-openqueue" class="section">
+      <div class="filter-row">
+        <label>Owner</label><select id="flt-owner" onchange="filterQ()"><option value="">All</option></select>
+        <label>Status</label><select id="flt-status" onchange="filterQ()"><option value="">All</option></select>
+        <label>Age</label>
+        <select id="flt-age" onchange="filterQ()">
+          <option value="">All ages</option>
+          <option value="90">Over 90 days</option>
+          <option value="60">Over 60 days</option>
+          <option value="30">Over 30 days</option>
+          <option value="7">Under 7 days</option>
+        </select>
+        <input type="text" id="flt-search" placeholder="Search case # or title…" oninput="filterQ()">
+        <span style="font-size:11px;color:var(--gray);margin-left:auto"><strong id="q-count">0</strong> cases</span>
+      </div>
+      <div class="tbl-wrap">
+        <table class="sticky-h">
+          <thead><tr>
+            <th>Case # <button class="sort-btn" onclick="sortQ('case_num')">⇅</button></th>
+            <th>Title</th>
+            <th>Owner <button class="sort-btn" onclick="sortQ('owner')">⇅</button></th>
+            <th>Created</th>
+            <th>Days open <button class="sort-btn" onclick="sortQ('days_open')">⇅</button></th>
+            <th>Status</th>
+          </tr></thead>
+          <tbody id="q-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pag">
+        <button id="pg-prev" onclick="chPg(-1)">← Prev</button>
+        <span id="pg-info">Page 1 of 1</span>
+        <button id="pg-next" onclick="chPg(1)">Next →</button>
+      </div>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div id="sec-insights" class="section">
+      <!-- AI narrative banner -->
+      <div id="ins-ai-banner" style="background:linear-gradient(135deg,#0f2240,#1e3a6e);border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:flex-start;gap:14px">
+        <div style="width:36px;height:36px;background:rgba(255,255,255,.12);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="1.8"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">AI Analysis — <span id="ins-ai-period"></span></div>
+          <div id="ins-ai-text" style="font-size:13px;color:rgba(255,255,255,.88);line-height:1.7"></div>
+        </div>
+      </div>
+
+      <!-- Data-driven insight cards grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <!-- Volume signal -->
+        <div class="ins-card" id="ins-volume-card">
+          <div class="ins-card-header"><span class="ins-icon ins-icon-blue">📈</span><span class="ins-card-title">Volume signal</span><span class="ins-badge" id="ins-volume-badge"></span></div>
+          <div class="ins-body" id="ins-volume-body"></div>
+          <div class="ins-action" id="ins-volume-action"></div>
+        </div>
+        <!-- Backlog health -->
+        <div class="ins-card" id="ins-backlog-card">
+          <div class="ins-card-header"><span class="ins-icon ins-icon-orange">⚠</span><span class="ins-card-title">Backlog health</span><span class="ins-badge" id="ins-backlog-badge"></span></div>
+          <div class="ins-body" id="ins-backlog-body"></div>
+          <div class="ins-action" id="ins-backlog-action"></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <!-- Top customers by volume -->
+        <div class="ins-card">
+          <div class="ins-card-header"><span class="ins-icon ins-icon-teal">🏢</span><span class="ins-card-title">Top customers by case volume</span></div>
+          <div id="ins-cust-vol"></div>
+        </div>
+        <!-- Customers with aged open cases -->
+        <div class="ins-card">
+          <div class="ins-card-header"><span class="ins-icon ins-icon-red">🕐</span><span class="ins-card-title">Customers with aged open cases</span></div>
+          <div id="ins-cust-aged"></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <!-- Keyword trends -->
+        <div class="ins-card">
+          <div class="ins-card-header"><span class="ins-icon ins-icon-purple">🔤</span><span class="ins-card-title">Recurring themes in case titles</span></div>
+          <div id="ins-keywords"></div>
+        </div>
+        <!-- Stuck topics -->
+        <div class="ins-card">
+          <div class="ins-card-header"><span class="ins-icon ins-icon-red">🔍</span><span class="ins-card-title">Topics appearing in aged open cases</span></div>
+          <div id="ins-stuck-keywords"></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <!-- Product resolution times -->
+        <div class="ins-card">
+          <div class="ins-card-header"><span class="ins-icon ins-icon-orange">📦</span><span class="ins-card-title">Resolution time by product</span></div>
+          <div id="ins-prod-res"></div>
+        </div>
+        <!-- Engineer load vs throughput -->
+        <div class="ins-card">
+          <div class="ins-card-header"><span class="ins-icon ins-icon-blue">👤</span><span class="ins-card-title">Engineer throughput vs open load</span></div>
+          <div id="ins-eng-load"></div>
+        </div>
+      </div>
+
+      <div style="font-size:10px;color:var(--gray);text-align:center;padding:8px 0">
+        AI analysis is generated by Claude based on the computed data points above. Data signals are calculated directly from your Excel file.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+
+// ── Chart registry ──
+let charts={};
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function mkChart(id,cfg){destroyChart(id);const c=new Chart(document.getElementById(id).getContext('2d'),cfg);charts[id]=c;return c;}
+const co={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:10}}}}};
+
+// ── Tier configuration (configurable thresholds) ──
+window.tierConfig={eliteDays:10,eliteOpen:15,eliteSla:90,strongDays:30,strongOpen:30,strongSla:80};
+
+// ── Email configuration (persisted in localStorage) ──
+const EMAIL_STAFF=[
+  {key:'wake',name:'Wake, Donovan',first:'Donovan'},
+  {key:'elias',name:'Elias, Chris',first:'Chris'},
+  {key:'lucas',name:'Lucas, Marcus',first:'Marcus'},
+  {key:'letnikova',name:'Letnikova, Allie',first:'Allie'},
+  {key:'najm',name:'Najm, Charbel',first:'Charbel'},
+  {key:'theodoropoulos',name:'Theodoropoulos, Alexandros',first:'Alexandros'},
+  {key:'blakeman',name:'Blakeman, Jarod',first:'Jarod'},
+  {key:'taylor',name:'Taylor, Jesse',first:'Jesse'},
+  {key:'leal',name:'Leal, Shayna',first:'Shayna'},
+];
+
+function loadEmailConfig(){
+  try{
+    const saved=localStorage.getItem('velocity_email_cfg');
+    return saved?JSON.parse(saved):{managerName:'',managerEmail:'',emails:{}};
+  }catch(e){return{managerName:'',managerEmail:'',emails:{}};}
+}
+function saveEmailConfig(){
+  const cfg={
+    managerName:document.getElementById('cfg-manager-name').value.trim(),
+    managerEmail:document.getElementById('cfg-manager-email').value.trim(),
+    emails:{}
+  };
+  EMAIL_STAFF.forEach(s=>{
+    const el=document.getElementById('cfg-email-'+s.key);
+    if(el)cfg.emails[s.name]=el.value.trim();
+  });
+  try{localStorage.setItem('velocity_email_cfg',JSON.stringify(cfg));}catch(e){}
+  const saved=document.getElementById('cfg-email-saved');
+  saved.style.display='inline';
+  setTimeout(()=>saved.style.display='none',2000);
+}
+function populateEmailFields(){
+  const cfg=loadEmailConfig();
+  document.getElementById('cfg-manager-name').value=cfg.managerName||'';
+  document.getElementById('cfg-manager-email').value=cfg.managerEmail||'';
+  const container=document.getElementById('cfg-email-fields');
+  container.innerHTML=EMAIL_STAFF.map(s=>`
+    <div>
+      <label style="display:block;font-size:11px;color:var(--gray);margin-bottom:3px;font-weight:500">${s.name}</label>
+      <input type="email" id="cfg-email-${s.key}" placeholder="${s.first.toLowerCase()}@velocitysolutions.com"
+        value="${cfg.emails[s.name]||''}"
+        style="width:100%;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px">
+    </div>`).join('');
+}
+
+function emailScorecard(engineerName){
+  if(!window.D||!gfStart){alert('Please load data first.');return;}
+
+  const cfg=loadEmailConfig();
+  const toEmail=cfg.emails[engineerName]||'';
+  const ccEmail=cfg.managerEmail||'';
+  const managerName=cfg.managerName||'[Manager Name]';
+  const firstName=EMAIL_STAFF.find(s=>s.name===engineerName)?.first||engineerName.split(', ')[1]||engineerName;
+
+  // Recompute this engineer's metrics for the current period
+  const P=computePeriodMetrics(gfStart,gfEnd);
+  const today=window.D.today;
+  const slaLimits={'1-Critical':1,'2-Medium':3,'3-Low':7,'4-General':14};
+  const all=window.D.rawData.filter(r=>r.owner===engineerName);
+  const per=P.period.filter(r=>r.owner===engineerName);
+  const closedPer=P.closedInPeriod.filter(r=>r.owner===engineerName);
+  const hd=closedPer.filter(r=>r.daysToClose!==null);
+  const hdAll=all.filter(r=>r.daysToClose!==null);
+  const hdSrc=hd.length?hd:hdAll;
+  const op=all.filter(r=>!r.resolved).map(r=>({...r,daysOpen:daysBetween(r.created,today)}));
+
+  const assigned=per.length;
+  const resolved=per.filter(r=>!!r.resolved).length;
+  const resPct=assigned>0?Math.round(resolved/assigned*100):0;
+  const avgDays=hdSrc.length?Math.round(hdSrc.reduce((s,r)=>s+r.daysToClose,0)/hdSrc.length*10)/10:null;
+  const medDays=hdSrc.length?(()=>{const s=[...hdSrc].sort((a,b)=>a.daysToClose-b.daysToClose);const m=Math.floor(s.length/2);return s.length%2?s[m].daysToClose:(s[m-1].daysToClose+s[m].daysToClose)/2;})():null;
+  const samePct=hdSrc.length?Math.round(hdSrc.filter(r=>r.daysToClose===0).length/hdSrc.length*1000)/10:null;
+  const p7Pct=hdSrc.length?Math.round(hdSrc.filter(r=>r.daysToClose<=7).length/hdSrc.length*1000)/10:null;
+  const slaElig=closedPer.filter(r=>r.daysToClose!==null&&slaLimits[r.severity]!==undefined);
+  const slaMet=slaElig.filter(r=>r.daysToClose<=slaLimits[r.severity]).length;
+  const slaPct=slaElig.length?Math.round(slaMet/slaElig.length*100):null;
+  const totalOpen=op.length;
+  const over90=op.filter(r=>r.daysOpen>90).length;
+  const avgOpenAge=op.length?Math.round(op.reduce((s,r)=>s+r.daysOpen,0)/op.length):null;
+  const longestOpen=op.length?Math.max(...op.map(r=>r.daysOpen)):null;
+
+  // Unassigned product and FI case lists
+  const noProdCases=op.filter(r=>!r.product).sort((a,b)=>b.daysOpen-a.daysOpen);
+  const noFICases=op.filter(r=>r.acct==='999').sort((a,b)=>b.daysOpen-a.daysOpen);
+
+  // Format the date range for subject line
+  const weekOf=today.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const periodRange=gfStart.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+' \u2013 '+gfEnd.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+
+  const pad=(label,value,width=22)=>{
+    const l=label+':';
+    return l.padEnd(width)+value;
+  };
+  const sep='─'.repeat(34);
+  const fmt=v=>v!==null&&v!==undefined?v:'—';
+  const fmtCase=r=>{
+    const company=(r.companyProfile||'—').slice(0,45);
+    return`  ${r.caseNum}  |  ${r.daysOpen}d  |  ${company}  |  ${(r.title||'').slice(0,45)}`;
+  };
+  const caseHeader=`  Case Number              |  Days Open  |  Company                                      |  Title`;
+  const caseDivider='  '+'-'.repeat(100);
+
+  // Build action items sections only if there are cases to list
+  const noProdSection=noProdCases.length?[
+    '',sep,
+    `ACTION REQUIRED — UNASSIGNED PRODUCT (${noProdCases.length} case${noProdCases.length>1?'s':''})`,
+    sep,
+    'The following open cases have no Support Product assigned.',
+    'Please update the Support Product field for each case below.',
+    '',
+    caseHeader,
+    caseDivider,
+    ...noProdCases.map(fmtCase),
+  ]:[];
+
+  const noFISection=noFICases.length?[
+    '',sep,
+    `ACTION REQUIRED — UNASSIGNED FI (${noFICases.length} case${noFICases.length>1?'s':''})`,
+    sep,
+    'The following open cases are attributed to account 999 and',
+    'have not been linked to a specific financial institution.',
+    'Please update the Customer Acct # field for each case below.',
+    '',
+    caseHeader,
+    caseDivider,
+    ...noFICases.map(fmtCase),
+  ]:[];
+
+  const body=[
+    `Hi ${firstName},`,
+    '',
+    `Here is your support operations scorecard for ${gfLabel} (${periodRange}).`,
+    '',
+    sep,
+    'PERIOD SUMMARY',
+    sep,
+    pad('Cases assigned',fmt(assigned)),
+    pad('Cases closed',fmt(resolved)),
+    pad('Resolution rate',assigned>0?resPct+'%':'—'),
+    '',
+    sep,
+    'RESPONSE QUALITY',
+    sep,
+    pad('Avg days to close',avgDays!==null?avgDays+' days':'—'),
+    pad('Median days to close',medDays!==null?medDays+' days':'—'),
+    pad('Same-day closure',samePct!==null?samePct+'%':'—'),
+    pad('Closed within 7 days',p7Pct!==null?p7Pct+'%':'—'),
+    pad('SLA compliance',slaPct!==null?slaPct+'%':'—'),
+    '',
+    sep,
+    'OPEN CASES',
+    sep,
+    pad('Currently open',fmt(totalOpen)),
+    pad('Open > 90 days',fmt(over90)),
+    pad('Avg open case age',avgOpenAge!==null?avgOpenAge+' days':'—'),
+    pad('Longest open case',longestOpen!==null?longestOpen+' days':'—'),
+    ...noProdSection,
+    ...noFISection,
+    '',
+    sep,
+    '',
+    'Thank you for your continued contributions to the support team. Please reach out if you have any questions about these metrics or would like to discuss your caseload.',
+    '',
+    `Best regards,`,
+    managerName,
+    'Velocity Solutions \u2014 Support Operations',
+  ].join('\n');
+
+  const subject=`Your Support Scorecard \u2014 Week of ${weekOf}`;
+  let mailto=`mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  if(ccEmail)mailto+=`&cc=${encodeURIComponent(ccEmail)}`;
+  window.open(mailto,'_blank');
+}
+
+function toggleConfig(){
+  const d=document.getElementById('cfg-drawer');
+  const opening=d.style.display==='none';
+  d.style.display=opening?'block':'none';
+  if(opening)populateEmailFields();
+}
+function applyConfig(){
+  const ed=parseFloat(document.getElementById('cfg-elite-days').value)||10;
+  const eo=parseFloat(document.getElementById('cfg-elite-open').value)||15;
+  const es=parseFloat(document.getElementById('cfg-elite-sla').value)||90;
+  const sd=parseFloat(document.getElementById('cfg-strong-days').value)||30;
+  const so=parseFloat(document.getElementById('cfg-strong-open').value)||30;
+  const ss=parseFloat(document.getElementById('cfg-strong-sla').value)||80;
+  window.tierConfig={eliteDays:ed,eliteOpen:eo,eliteSla:es,strongDays:sd,strongOpen:so,strongSla:ss};
+  if(window.D&&gfStart)renderScorecards(computePeriodMetrics(gfStart,gfEnd));
+  const s=document.getElementById('cfg-saved');s.style.display='inline';
+  setTimeout(()=>s.style.display='none',2000);
+}
+function resetConfig(){
+  window.tierConfig={eliteDays:10,eliteOpen:15,eliteSla:90,strongDays:30,strongOpen:30,strongSla:80};
+  document.getElementById('cfg-elite-days').value=10;
+  document.getElementById('cfg-elite-open').value=15;
+  document.getElementById('cfg-elite-sla').value=90;
+  document.getElementById('cfg-strong-days').value=30;
+  document.getElementById('cfg-strong-open').value=30;
+  document.getElementById('cfg-strong-sla').value=80;
+  if(window.D&&gfStart)renderScorecards(computePeriodMetrics(gfStart,gfEnd));
+  const s=document.getElementById('cfg-saved');s.style.display='inline';
+  setTimeout(()=>s.style.display='none',2000);
+}
+
+// ── FY helpers (Q1=Mar–May, Q2=Jun–Aug, Q3=Sep–Nov, Q4=Dec–Feb) ──
+function fyOfDate(d){return d.getMonth()>=2?d.getFullYear()+1:d.getFullYear();}
+function fyQuarterOfDate(d){const fm=((d.getMonth()-2+12)%12);return{fy:fyOfDate(d),q:Math.floor(fm/3)+1};}
+function fyQuarterRange(fy,q){
+  const qStartMonth=[2,5,8,11][q-1]; // 0-indexed JS month
+  const startYear=qStartMonth>=2?fy-1:fy;
+  const start=new Date(startYear,qStartMonth,1);
+  const end=new Date(startYear,qStartMonth+3,0); // last day of 3rd month
+  return{start,end};
+}
+function fyRange(fy){return{start:new Date(fy-1,2,1),end:new Date(fy,1,28)};}
+function monthRange(yr,mo){return{start:new Date(yr,mo,1),end:new Date(yr,mo+1,0)};}
+function weekRange(monDateStr){
+  // monDateStr is an ISO date string for the Monday of the week (e.g. '2026-03-02')
+  const start=new Date(monDateStr+'T00:00:00');
+  const end=new Date(start); end.setDate(end.getDate()+6);
+  return{start,end};
+}function fmtDateRange(start,end){
+  const f=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  return f(start)+' – '+f(end);
+}
+
+// ── Global filter state ──
+let gfStart=null, gfEnd=null, gfLabel='';
+
+function gfInit(){
+  const data=window.D.rawData;
+  const fySet=new Set(),qSet=new Set(),mSet=new Set(),wSet=new Set();
+  data.forEach(r=>{
+    if(!r.created)return;
+    const d=r.created;
+    fySet.add(fyOfDate(d));
+    const{fy,q}=fyQuarterOfDate(d); qSet.add(`${fy}|${q}`);
+    mSet.add(`${d.getFullYear()}|${d.getMonth()}`);
+    wSet.add(weekKey(d)); // weekKey returns the Monday ISO date string
+  });
+  window.D._fySet=fySet; window.D._qSet=qSet; window.D._mSet=mSet; window.D._wSet=wSet;
+  gfPopulateValues();
+  // Default: most recent full FY
+  const latestFY=Math.max(...fySet);
+  document.getElementById('gf-type').value='fy';
+  document.getElementById('gf-value').value=String(latestFY);
+  gfApply();
+}
+
+function gfTypeChange(){
+  gfPopulateValues();
+  gfApply();
+}
+
+function gfPopulateValues(){
+  const type=document.getElementById('gf-type').value;
+  const sel=document.getElementById('gf-value');
+  const prev=sel.value;
+  sel.innerHTML='';
+  if(type==='fy'){
+    [...window.D._fySet].sort((a,b)=>b-a).forEach(fy=>{
+      const o=document.createElement('option');o.value=fy;o.textContent=`FY${fy}`;sel.appendChild(o);
+    });
+  } else if(type==='quarter'){
+    [...window.D._qSet].sort((a,b)=>b.localeCompare(a)).forEach(k=>{
+      const[fy,q]=k.split('|');
+      const o=document.createElement('option');o.value=k;o.textContent=`FY${fy} Q${q}`;sel.appendChild(o);
+    });
+  } else if(type==='month'){
+    [...window.D._mSet].sort((a,b)=>b.localeCompare(a)).forEach(k=>{
+      const[yr,mo]=k.split('|').map(Number);
+      const o=document.createElement('option');o.value=k;
+      o.textContent=new Date(yr,mo,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+      sel.appendChild(o);
+    });
+  } else {
+    // Week — label as "Week of Mon DD, YYYY" — only from FY2027 start (2026-03-02)
+    const fy2027Start='2026-03-02';
+    [...window.D._wSet].filter(k=>k>=fy2027Start).sort((a,b)=>b.localeCompare(a)).forEach(k=>{
+      const d=new Date(k+'T00:00:00');
+      const o=document.createElement('option');o.value=k;
+      o.textContent='Week of '+d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      sel.appendChild(o);
+    });
+  }
+  if(prev&&[...sel.options].some(o=>o.value===prev))sel.value=prev;
+}
+
+function gfApply(){
+  const type=document.getElementById('gf-type').value;
+  const val=document.getElementById('gf-value').value;
+  if(!val)return;
+  let range,label;
+  if(type==='fy'){
+    const fy=parseInt(val);range=fyRange(fy);label=`FY${fy}`;
+  } else if(type==='quarter'){
+    const[fy,q]=val.split('|').map(Number);range=fyQuarterRange(fy,q);label=`FY${fy} Q${q}`;
+  } else if(type==='month'){
+    const[yr,mo]=val.split('|').map(Number);range=monthRange(yr,mo);label=new Date(yr,mo,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  } else {
+    range=weekRange(val);
+    const d=new Date(val+'T00:00:00');
+    label='Week of '+d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  }
+  gfStart=range.start; gfEnd=range.end; gfLabel=label;
+  document.getElementById('gf-range-label').textContent=fmtDateRange(gfStart,gfEnd);
+  refreshAllTabs();
+}
+
+// ── Core: compute all period-dependent data from raw ──
+function computePeriodMetrics(start,end){
+  const data=window.D.rawData, today=window.D.today;
+  const period=data.filter(r=>r.created>=start&&r.created<=end);
+  const closedInPeriod=data.filter(r=>r.resolved&&r.resolved>=start&&r.resolved<=end);
+  const openCases=data.filter(r=>!r.resolved).map(r=>({...r,daysOpen:daysBetween(r.created,today)}));
+  const withDays=closedInPeriod.filter(r=>r.daysToClose!==null);
+  const withDaysAll=data.filter(r=>r.daysToClose!==null);
+
+  // Weekly buckets within period
+  const weekMap={},weekResMap={};
+  period.forEach(r=>{const k=weekKey(r.created);weekMap[k]=(weekMap[k]||0)+1;});
+  closedInPeriod.forEach(r=>{const k=weekKey(r.resolved);weekResMap[k]=(weekResMap[k]||0)+1;});
+  const allWeeks=[...new Set([...Object.keys(weekMap),...Object.keys(weekResMap)])].sort();
+  const wLabels=allWeeks.map(k=>{const d=new Date(k);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});});
+
+  // Daily buckets
+  const dayMap={},dayResMap={};
+  period.forEach(r=>{const k=r.created.toISOString().slice(0,10);dayMap[k]=(dayMap[k]||0)+1;});
+  closedInPeriod.forEach(r=>{const k=r.resolved.toISOString().slice(0,10);dayResMap[k]=(dayResMap[k]||0)+1;});
+  const allDays=[...new Set([...Object.keys(dayMap),...Object.keys(dayResMap)])].sort();
+  const dLabels=allDays.map(k=>{const d=new Date(k+'T12:00:00');return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});});
+
+  // Products (use 'General' as display label for blank product)
+  const prodMap={};
+  period.forEach(r=>{const p=r.product||'General';prodMap[p]=(prodMap[p]||0)+1;});
+  const prodSorted=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  // Queue health — open cases only (all-time, not period filtered)
+  const unassignedOwner=data.filter(r=>!r.resolved&&r.owner==='Velocity Solutions Support').length;
+  const unassignedProduct=data.filter(r=>!r.resolved&&!r.product).length;
+  const unassignedFI=data.filter(r=>!r.resolved&&r.acct==='999').length;
+
+  // Aging (all-time open)
+  const ac=[0,0,0,0,0,0];
+  openCases.forEach(r=>{const d=r.daysOpen;if(d<=7)ac[0]++;else if(d<=14)ac[1]++;else if(d<=30)ac[2]++;else if(d<=60)ac[3]++;else if(d<=90)ac[4]++;else ac[5]++;});
+
+  // Resolution time (closed in period)
+  const rc=[0,0,0,0,0];
+  withDays.forEach(r=>{const d=r.daysToClose;if(d===0)rc[0]++;else if(d<=3)rc[1]++;else if(d<=7)rc[2]++;else if(d<=14)rc[3]++;else rc[4]++;});
+
+  const dip=Math.max(daysBetween(start,end),1);
+  const avgD=withDays.length?Math.round(withDays.reduce((s,r)=>s+r.daysToClose,0)/withDays.length*10)/10:0;
+  const medD=withDays.length?(()=>{const s=[...withDays].sort((a,b)=>a.daysToClose-b.daysToClose);const m=Math.floor(s.length/2);return s.length%2?s[m].daysToClose:(s[m-1].daysToClose+s[m].daysToClose)/2;})():0;
+  const samePct=withDays.length?Math.round(withDays.filter(r=>r.daysToClose===0).length/withDays.length*1000)/10:0;
+  const p7=withDays.length?Math.round(withDays.filter(r=>r.daysToClose<=7).length/withDays.length*1000)/10:0;
+
+  // SLA compliance (closed in period only)
+  const slaLimits={'1-Critical':1,'2-Medium':3,'3-Low':7,'4-General':14};
+  const slaLabels={'1-Critical':'Critical','2-Medium':'Medium','3-Low':'Low','4-General':'General'};
+  const slaResults={};
+  let slaTotalMet=0,slaTotalElig=0;
+  Object.entries(slaLimits).forEach(([sev,limit])=>{
+    const subset=closedInPeriod.filter(r=>r.severity===sev&&r.daysToClose!==null);
+    const met=subset.filter(r=>r.daysToClose<=limit).length;
+    slaResults[sev]={label:slaLabels[sev],limit,total:subset.length,met,pct:subset.length?Math.round(met/subset.length*100):null};
+    slaTotalMet+=met; slaTotalElig+=subset.length;
+  });
+  const slaOverall=slaTotalElig?Math.round(slaTotalMet/slaTotalElig*100):null;
+
+  return{
+    period,closedInPeriod,openCases,
+    kpis:{created:period.length,closed:closedInPeriod.length,total_open:openCases.length,
+      rfr:data.filter(r=>r.status==='Ready for Review').length,
+      resolved_all:data.filter(r=>!!r.resolved).length,
+      avg_days:avgD,median_days:medD,same_day_pct:samePct,pct_7d:p7,
+      avg_daily_created:Math.round(period.length/dip*10)/10,
+      avg_daily_closed:Math.round(closedInPeriod.length/dip*10)/10,
+      net:period.length-closedInPeriod.length},
+    weekly:{labels:wLabels,created:allWeeks.map(k=>weekMap[k]||0),resolved:allWeeks.map(k=>weekResMap[k]||0)},
+    daily:{labels:dLabels,created:allDays.map(k=>dayMap[k]||0),resolved:allDays.map(k=>dayResMap[k]||0)},
+    aging:{labels:['0-7d','8-14d','15-30d','31-60d','61-90d','>90d'],counts:ac},
+    resolution:{labels:['Same day','1-3d','4-7d','8-14d','>14d'],counts:rc},
+    products:{labels:prodSorted.map(x=>x[0]),counts:prodSorted.map(x=>x[1])},
+    sla:{results:slaResults,overall:slaOverall,totalMet:slaTotalMet,totalElig:slaTotalElig},
+    queueHealth:{unassignedOwner,unassignedProduct,unassignedFI}
+  };
+}
+
+// ── Section nav ──
+let activeSection='overview';
+function showSec(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  const idx={overview:0,volume:1,aging:2,scorecards:3,openqueue:4,insights:5};
+  document.querySelectorAll('.navbtn')[idx[id]].classList.add('active');
+  activeSection=id;
+}
+
+// ── Refresh all visible tabs ──
+let cVol=null,vMode='weekly';
+function refreshAllTabs(){
+  if(!window.D||!gfStart)return;
+  const P=computePeriodMetrics(gfStart,gfEnd);
+  renderOverview(P);
+  renderVolume(P);
+  renderAging(P);
+  renderScorecards(P);
+  renderInsights(P);
+  // open queue is always all-time, only init once
+  if(!window._qBuilt){buildQueue();window._qBuilt=true;}
+}
+
+// ── OVERVIEW ──
+function renderOverview(P){
+  const K=P.kpis;
+  const kpiDef=[
+    {l:'Cases created',v:K.created,c:'blue'},{l:'Cases closed',v:K.closed,c:'green'},
+    {l:'Total open',v:K.total_open,c:'orange'},{l:'Ready for review',v:K.rfr,c:'blue'},
+    {l:'Resolved all time',v:K.resolved_all,c:'teal'},{l:'Closed within 7 days',v:K.pct_7d+'%',c:'green'}
+  ];
+  document.getElementById('kpi-grid').innerHTML=kpiDef.map(k=>`<div class="kpi ${k.c}"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
+
+  mkChart('c-weekly',{type:'bar',data:{labels:P.weekly.labels,datasets:[
+    {label:'Created',data:P.weekly.created,backgroundColor:'#2563eb',borderRadius:4,barPercentage:.7},
+    {label:'Closed',data:P.weekly.resolved,backgroundColor:'#16a34a',borderRadius:4,barPercentage:.7}
+  ]},options:co});
+
+  mkChart('c-product',{type:'bar',data:{labels:P.products.labels,datasets:[{
+    data:P.products.counts,borderRadius:4,barPercentage:.7,
+    backgroundColor:['#2563eb','#16a34a','#ea580c','#dc2626','#0891b2','#7c3aed','#0f766e','#b45309']
+  }]},options:{...co,indexAxis:'y',scales:{x:{grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:10}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}});
+
+  mkChart('c-aging-ov',{type:'doughnut',data:{labels:P.aging.labels,datasets:[{
+    data:P.aging.counts,backgroundColor:['#16a34a','#22c55e','#ca8a04','#ea580c','#dc2626','#7f1d1d'],hoverOffset:4,borderWidth:2
+  }]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:9},boxWidth:10,padding:5}}}}});
+
+  mkChart('c-res-ov',{type:'bar',data:{labels:P.resolution.labels,datasets:[{
+    data:P.resolution.counts,backgroundColor:['#16a34a','#22c55e','#ca8a04','#ea580c','#dc2626'],borderRadius:4,barPercentage:.7
+  }]},options:co});
+
+  const openByEng=window.D.rawData.filter(r=>!r.resolved);
+  const staffNames=['Wake, Donovan','Elias, Chris','Lucas, Marcus','Letnikova, Allie','Najm, Charbel','Theodoropoulos, Alexandros','Blakeman, Jarod','Taylor, Jesse','Leal, Shayna'];
+  const shortName={'Wake, Donovan':'Wake','Elias, Chris':'Elias','Lucas, Marcus':'Lucas','Letnikova, Allie':'Letnikova','Najm, Charbel':'Najm','Theodoropoulos, Alexandros':'Theodorop.','Blakeman, Jarod':'Blakeman','Taylor, Jesse':'Taylor','Leal, Shayna':'Leal'};
+  const today=window.D.today;
+  const teamData=staffNames.map(n=>{
+    const op=openByEng.filter(r=>r.owner===n);
+    const over90=op.filter(r=>daysBetween(r.created,today)>90).length;
+    return{short:shortName[n],open:op.length,over90};
+  }).sort((a,b)=>b.open-a.open);
+  mkChart('c-team-ov',{type:'bar',data:{labels:teamData.map(s=>s.short),datasets:[{
+    data:teamData.map(s=>s.open),borderRadius:4,barPercentage:.7,
+    backgroundColor:teamData.map(s=>s.over90>10?'#dc2626':s.open>15?'#ea580c':'#2563eb')
+  }]},options:{...co,scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:10}}}}}});
+
+  // Queue health
+  const QH=P.queueHealth;
+  const qhItems=[
+    {id:'qh-unassigned-owner',label:'Unassigned cases',val:QH.unassignedOwner,sub:'Owner: Velocity Solutions Support',
+     cls:QH.unassignedOwner>0?'danger':'ok',tip:'Open cases where the Owner field is set to "Velocity Solutions Support" — these have not been assigned to an individual engineer.'},
+    {id:'qh-unassigned-product',label:'Unassigned product',val:QH.unassignedProduct,sub:'No Support Product entered',
+     cls:QH.unassignedProduct>0?'warn':'ok',tip:'Open cases where the Support Product field is blank — product must be set for accurate reporting.'},
+    {id:'qh-unassigned-fi',label:'Unassigned FI',val:QH.unassignedFI,sub:'Customer Acct # 999',
+     cls:QH.unassignedFI>0?'warn':'ok',tip:'Open cases attributed to account 999 — these have not been linked to a specific customer financial institution.'},
+  ];
+  document.getElementById('queue-health-grid').innerHTML=qhItems.map(q=>{
+    const borderClr=q.cls==='danger'?'var(--red)':q.cls==='warn'?'var(--orange)':'var(--green)';
+    const valClr=q.cls==='danger'?'var(--red)':q.cls==='warn'?'var(--orange)':'var(--green)';
+    return`<div style="background:var(--gray-lt);border-radius:8px;padding:12px 14px;border-left:3px solid ${borderClr};position:relative;cursor:default" class="has-tip">
+      <div class="tip"><div class="tip-label">${q.label}</div>${q.tip}<div class="tip-scope">Scope: all time open cases</div></div>
+      <div style="font-size:10px;color:var(--gray);font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${q.label}</div>
+      <div style="font-size:28px;font-weight:700;color:${valClr};line-height:1">${q.val}</div>
+      <div style="font-size:10px;color:var(--gray);margin-top:3px">${q.sub}</div>
+    </div>`;
+  }).join('');
+
+  // SLA compliance
+  const SLA=P.sla;
+  const oPct=SLA.overall;
+  const oBadgeCls=oPct===null?'b-gray':oPct>=80?'b-green':oPct>=60?'b-yellow':'b-red';
+  const oBadgeTxt=oPct===null?'No data':oPct>=80?'On track':oPct>=60?'At risk':'Below target';
+  document.getElementById('sla-overall-badge').className='badge '+oBadgeCls;
+  document.getElementById('sla-overall-badge').textContent=oBadgeTxt;
+  document.getElementById('sla-overall-pct').textContent=oPct!==null?oPct+'%':'—';
+  document.getElementById('sla-overall-pct').style.color=oPct===null?'var(--gray)':oPct>=80?'var(--green)':oPct>=60?'var(--yellow)':'var(--red)';
+
+  const sevOrder=['1-Critical','2-Medium','3-Low','4-General'];
+  const sevClr=pct=>pct===null?'#94a3b8':pct>=80?'#16a34a':pct>=60?'#ca8a04':'#dc2626';
+  document.getElementById('sla-rows').innerHTML=sevOrder.map(sev=>{
+    const r=SLA.results[sev];
+    const barW=r.pct!==null?r.pct:0;
+    const clr=sevClr(r.pct);
+    const pctTxt=r.pct!==null?r.pct+'%':'—';
+    const metaTxt=r.total>0?`${r.met}/${r.total} cases`:'No closed cases';
+    return`<div class="sla-row">
+      <div class="sla-sev">${r.label}</div>
+      <div class="sla-bar-track"><div class="sla-bar-fill" style="width:${barW}%;background:${clr}"></div></div>
+      <div class="sla-meta">${metaTxt}</div>
+      <div class="sla-pct" style="color:${clr}">${pctTxt}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── VOLUME ──
+function renderVolume(P){
+  const K=P.kpis;
+  const net=K.net;
+  document.getElementById('vol-stats').innerHTML=[
+    [K.created,'Cases created','blue'],[K.closed,'Cases closed','green'],
+    [K.avg_daily_created,'Avg created / day',''],[K.avg_daily_closed,'Avg closed / day',''],
+    [(net>0?'+':'')+net,'Net backlog change',net>0?'orange':'green']
+  ].map(([v,l,c])=>`<div class="ss"><span class="sv"${c?` style="color:var(--${c})"`:''}>${v}</span><span class="sl">${l}</span></div>`).join('');
+
+  const lco={...co,scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:45}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:10}}}}};
+  const src=vMode==='weekly'?P.weekly:P.daily;
+  cVol=mkChart('c-volume',{type:'line',data:{labels:src.labels,datasets:[
+    {label:'Created',data:src.created,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.08)',tension:.35,fill:true,pointRadius:3,borderWidth:2,pointBorderWidth:0},
+    {label:'Closed',data:src.resolved,borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.08)',tension:.35,fill:true,pointRadius:3,borderWidth:2,borderDash:[5,3],pointBorderWidth:0}
+  ]},options:lco});
+  // Store current P for weekly/daily toggle
+  window._lastP=P;
+}
+function setVM(m){
+  vMode=m;
+  document.getElementById('tbtn-w').classList.toggle('on',m==='weekly');
+  document.getElementById('tbtn-d').classList.toggle('on',m==='daily');
+  document.getElementById('vmode-lbl').textContent=m==='weekly'?'weekly view':'daily view';
+  if(!cVol||!window._lastP)return;
+  const src=m==='weekly'?window._lastP.weekly:window._lastP.daily;
+  cVol.data.labels=src.labels;
+  cVol.data.datasets[0].data=src.created;
+  cVol.data.datasets[1].data=src.resolved;
+  cVol.update();
+}
+
+// ── AGING & RESOLUTION ──
+function renderAging(P){
+  const K=P.kpis;
+  mkChart('c-aging2',{type:'bar',data:{labels:P.aging.labels,datasets:[{data:P.aging.counts,backgroundColor:['#16a34a','#22c55e','#ca8a04','#ea580c','#dc2626','#7f1d1d'],borderRadius:4,barPercentage:.7}]},options:co});
+  mkChart('c-res2',{type:'bar',data:{labels:P.resolution.labels,datasets:[{data:P.resolution.counts,backgroundColor:['#16a34a','#22c55e','#ca8a04','#ea580c','#dc2626'],borderRadius:4,barPercentage:.7}]},options:co});
+
+  const tot=P.aging.counts.reduce((a,b)=>a+b,0)||1;
+  const agL=['0-7 days','8-14 days','15-30 days','31-60 days','61-90 days','>90 days'];
+  const agB=['b-green','b-green','b-yellow','b-orange','b-red','b-red'];
+  document.getElementById('aging-tbl').innerHTML='<thead><tr><th>Age</th><th>Cases</th><th>%</th></tr></thead><tbody>'+P.aging.counts.map((c,i)=>`<tr><td>${agL[i]}</td><td>${c}</td><td><span class="badge ${agB[i]}">${Math.round(c/tot*100)}%</span></td></tr>`).join('')+'</tbody>';
+
+  const rTot=P.resolution.counts.reduce((a,b)=>a+b,0)||1;
+  const rL=['Same day','1-3 days','4-7 days','8-14 days','>14 days'];
+  const rB=['b-green','b-green','b-yellow','b-orange','b-red'];
+  document.getElementById('res-tbl').innerHTML='<thead><tr><th>Time</th><th>Cases</th><th>%</th></tr></thead><tbody>'+P.resolution.counts.map((c,i)=>`<tr><td>${rL[i]}</td><td>${c}</td><td><span class="badge ${rB[i]}">${Math.round(c/rTot*100)}%</span></td></tr>`).join('')+'</tbody>';
+
+  document.getElementById('aging-stats').innerHTML=[
+    [K.avg_days+'d','Avg days to close'],[K.median_days+'d','Median to close'],
+    [K.same_day_pct+'%','Same-day close rate'],[K.pct_7d+'%','Closed ≤7 days'],
+    [P.aging.counts[5],'Open >90 days']
+  ].map(([v,l])=>`<div class="ss"><span class="sv">${v}</span><span class="sl">${l}</span></div>`).join('');
+}
+
+// ── SCORECARDS ──
+const staffNames=['Wake, Donovan','Elias, Chris','Lucas, Marcus','Letnikova, Allie','Najm, Charbel','Theodoropoulos, Alexandros','Blakeman, Jarod','Taylor, Jesse','Leal, Shayna'];
+const shortName={'Wake, Donovan':'Wake','Elias, Chris':'Elias','Lucas, Marcus':'Lucas','Letnikova, Allie':'Letnikova','Najm, Charbel':'Najm','Theodoropoulos, Alexandros':'Theodorop.','Blakeman, Jarod':'Blakeman','Taylor, Jesse':'Taylor','Leal, Shayna':'Leal'};
+
+// Avatar colours — one per engineer, consistent
+const avatarColors=[
+  ['#dbeafe','#1e40af'],['#dcfce7','#14532d'],['#fef9c3','#713f12'],
+  ['#ffe4e6','#881337'],['#f3e8ff','#581c87'],['#ffedd5','#7c2d12'],
+  ['#ccfbf1','#134e4a'],['#e0f2fe','#0c4a6e'],['#fae8ff','#701a75']
+];
+
+function initials(name){const p=name.split(', ');return((p[1]||'')[0]||'')+(p[0][0]||'');}
+
+function renderScorecards(P){
+  const today=window.D.today;
+
+  // Build monthly volume buckets (2026 calendar months) for mini charts
+  const months2026=[0,1,2,3].map(i=>new Date(2026,i,1)); // Jan–Apr 2026
+  const monthLabels=['Jan','Feb','Mar','Apr'];
+
+  const scorecards=staffNames.map((name,idx)=>{
+    const all=window.D.rawData.filter(r=>r.owner===name);
+    const per=P.period.filter(r=>r.owner===name);
+    const closedPer=P.closedInPeriod.filter(r=>r.owner===name);
+    const hd=closedPer.filter(r=>r.daysToClose!==null);
+    const hdAll=all.filter(r=>r.daysToClose!==null);
+    const hdSrc=hd.length?hd:hdAll;
+    const op=all.filter(r=>!r.resolved).map(r=>({...r,daysOpen:daysBetween(r.created,today)}));
+    const over90=op.filter(r=>r.daysOpen>90).length;
+    const avgDays=hdSrc.length?Math.round(hdSrc.reduce((s,r)=>s+r.daysToClose,0)/hdSrc.length*10)/10:0;
+    const medDays=hdSrc.length?(()=>{const s=[...hdSrc].sort((a,b)=>a.daysToClose-b.daysToClose);const m=Math.floor(s.length/2);return s.length%2?s[m].daysToClose:(s[m-1].daysToClose+s[m].daysToClose)/2;})():0;
+    const samePct=hdSrc.length?Math.round(hdSrc.filter(r=>r.daysToClose===0).length/hdSrc.length*1000)/10:0;
+    const p7Pct=hdSrc.length?Math.round(hdSrc.filter(r=>r.daysToClose<=7).length/hdSrc.length*1000)/10:0;
+    const avgOpenAge=op.length?Math.round(op.reduce((s,r)=>s+r.daysOpen,0)/op.length):0;
+    const longestOpen=op.length?Math.max(...op.map(r=>r.daysOpen)):0;
+    const resolvedCount=per.filter(r=>!!r.resolved).length;
+
+    // SLA compliance for this engineer (closed in period with known days)
+    const slaLimits={'1-Critical':1,'2-Medium':3,'3-Low':7,'4-General':14};
+    const slaElig=closedPer.filter(r=>r.daysToClose!==null&&slaLimits[r.severity]!==undefined);
+    const slaMet=slaElig.filter(r=>r.daysToClose<=slaLimits[r.severity]).length;
+    const slaPct=slaElig.length?Math.round(slaMet/slaElig.length*100):null;
+
+    // Queue health for this engineer (open cases only, all-time)
+    const unassignedProd=op.filter(r=>!r.product).length;
+    const unassignedFI=op.filter(r=>r.acct==='999').length;
+
+    // Monthly volume for 2026 mini chart (all-time, shows context)
+    const monthVol=months2026.map((_,mi)=>all.filter(r=>r.created.getFullYear()===2026&&r.created.getMonth()===mi).length);
+
+    // Tier: use configurable thresholds
+    const cfg=window.tierConfig;
+    let tier,tierClass;
+    if(avgDays<=cfg.eliteDays&&op.length<=cfg.eliteOpen&&(slaPct===null||slaPct>=cfg.eliteSla)){tier='Elite';tierClass='tier-elite';}
+    else if(avgDays<=cfg.strongDays&&op.length<=cfg.strongOpen&&(slaPct===null||slaPct>=cfg.strongSla)){tier='Strong';tierClass='tier-strong';}
+    else{tier='Needs Attention';tierClass='tier-attention';}
+
+    const[bgClr,txtClr]=avatarColors[idx%avatarColors.length];
+    const pct=per.length>0?Math.round(resolvedCount/per.length*100):0;
+    const bClr=pct>=50?'#16a34a':pct>=25?'#ea580c':'#dc2626';
+
+    return{name,short:shortName[name]||name,idx,
+      assigned:per.length,resolved:resolvedCount,
+      total_open:op.length,over_90:over90,avg_days:avgDays,median_days:medDays,
+      same_day_pct:samePct,p7_pct:p7Pct,avg_open_age:avgOpenAge,longest_open:longestOpen,
+      monthVol,tier,tierClass,bgClr,txtClr,pct,bClr,slaPct,slaEligCount:slaElig.length,
+      unassignedProd,unassignedFI};
+  });
+
+  const sorted=[...scorecards].sort((a,b)=>b.total_open-a.total_open);
+  const flag=s=>s.total_open>30||s.over_90>10?'flag-red':s.total_open>10||s.over_90>3?'flag-orange':'flag-green';
+  const oC=s=>s.total_open>30?'danger':s.total_open>10?'warn':'ok';
+  const o9C=s=>s.over_90>10?'danger':s.over_90>3?'warn':'ok';
+  const aC=s=>s.avg_open_age>100?'danger':s.avg_open_age>50?'warn':'';
+  const dC=s=>s.avg_days>30?'danger':s.avg_days>14?'warn':s.avg_days>0?'ok':'';
+
+  // Unique canvas IDs per render pass
+  const renderID=Date.now();
+
+  document.getElementById('sc-grid').innerHTML=sorted.map((s,i)=>{
+    const cid=`sc-mini-${s.short.replace(/[^a-z]/gi,'')}-${renderID}`;
+    const maxVol=Math.max(...s.monthVol,1);
+    const samePctClr=s.same_day_pct>=30?'var(--green)':s.same_day_pct>=15?'var(--orange)':'var(--red)';
+    const p7Clr=s.p7_pct>=70?'var(--green)':s.p7_pct>=50?'var(--orange)':'var(--red)';
+    const avgClr=s.avg_days>30?'var(--red)':s.avg_days>14?'var(--orange)':'var(--green)';
+    const t=(label,formula,body,scope)=>`<div class="tip"><div class="tip-label">${label}</div><div class="tip-formula">${formula}</div>${body}<div class="tip-scope">${scope}</div></div>`;
+    return `<div class="sc-card ${flag(s)}">
+      <div class="sc-header">
+        <div class="sc-avatar" style="background:${s.bgClr};color:${s.txtClr}">${initials(s.name)}</div>
+        <div class="sc-header-info">
+          <div class="sc-name">${s.name}</div>
+          <span class="tier-badge ${s.tierClass}">${s.tier}</span>
+        </div>
+        <span class="badge ${flag(s)==='flag-red'?'b-red':flag(s)==='flag-orange'?'b-orange':'b-green'}" style="align-self:flex-start;flex-shrink:0">${s.total_open} open</span>
+      </div>
+
+      <div class="sc-stats-row">
+        <div class="sc-stat has-tip">
+          ${t('Cases assigned','COUNT(created in period)','Cases created during <b>'+gfLabel+'</b> that are assigned to this engineer.','Scope: selected period only')}
+          <div class="sl">Cases assigned</div>
+          <div class="sv" style="color:var(--blue)">${s.assigned}</div>
+          <div class="sm">${gfLabel}</div>
+        </div>
+        <div class="sc-stat has-tip">
+          ${t('Cases closed','COUNT(resolved in period)','Cases that received a Resolved Date during <b>'+gfLabel+'</b>, assigned to this engineer.','Scope: selected period only')}
+          <div class="sl">Cases closed</div>
+          <div class="sv" style="color:var(--green)">${s.resolved}</div>
+          <div class="sm">${gfLabel}</div>
+        </div>
+        <div class="sc-stat has-tip">
+          ${t('Avg days to close','AVG(# of Days From Created to Resolved)','Average of the days-to-close field for cases resolved in <b>'+gfLabel+'</b>. Falls back to all-time if no cases closed this period. Median shown below.','Scope: cases resolved in selected period')}
+          <div class="sl">Avg days to close</div>
+          <div class="sv" style="color:${avgClr}">${s.avg_days>0?s.avg_days:'—'}</div>
+          <div class="sm">Median: ${s.median_days>0?s.median_days+'d':'—'}</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px">
+        <div class="sc-row has-tip">
+          ${t('Same-day closure %','COUNT(days=0) ÷ COUNT(closed) × 100','Percentage of closed cases where the case was opened and resolved on the same calendar day.','Scope: cases resolved in selected period')}
+          <span class="rl">Same-day closure</span><span class="rv" style="color:${samePctClr}">${s.same_day_pct}%</span>
+        </div>
+        <div class="sc-bar-track"><div class="sc-bar-fill" style="width:${Math.min(s.same_day_pct,100)}%;background:${samePctClr}"></div></div>
+        <div class="sc-row has-tip">
+          ${t('Closed within 7 days','COUNT(days ≤ 7) ÷ COUNT(closed) × 100','Percentage of closed cases resolved within 7 calendar days of being created.','Scope: cases resolved in selected period')}
+          <span class="rl">Closed within 7 days</span><span class="rv" style="color:${p7Clr}">${s.p7_pct}%</span>
+        </div>
+        <div class="sc-bar-track"><div class="sc-bar-fill" style="width:${Math.min(s.p7_pct,100)}%;background:${p7Clr}"></div></div>
+        <div class="sc-row has-tip" style="margin-bottom:0">
+          ${t('Longest open case','MAX(today − Created On) for open cases','The number of calendar days since the oldest currently-open case assigned to this engineer was created.','Scope: all time open cases')}
+          <span class="rl">Longest open case</span><span class="rv" style="color:var(--gray)">${s.longest_open>0?s.longest_open+' days':'—'}</span>
+        </div>
+      </div>
+
+      <div class="sc-metrics" style="grid-template-columns:1fr 1fr 1fr;">
+        <div class="sc-m has-tip ${oC(s)}">
+          ${t('Total open','COUNT(no Resolved Date)','All cases assigned to this engineer that have no value in the Resolved Date column, regardless of when they were created or their status label.','Scope: all time — not period filtered')}
+          <div class="v">${s.total_open}</div><div class="l">Total open</div>
+        </div>
+        <div class="sc-m has-tip ${o9C(s)}">
+          ${t('&gt;90 days open','COUNT(open where today − Created &gt; 90)','Open cases (no Resolved Date) where the number of calendar days since the Created On date exceeds 90.','Scope: all time open cases')}
+          <div class="v">${s.over_90}</div><div class="l">&gt;90 days</div>
+        </div>
+        <div class="sc-m has-tip ${aC(s)}">
+          ${t('Avg open age','AVG(today − Created On)','Average number of calendar days between the Created On date and today, calculated across all of this engineer\'s currently open cases.','Scope: current open cases only')}
+          <div class="v">${s.avg_open_age>0?s.avg_open_age+'d':'—'}</div><div class="l">Avg open age</div>
+        </div>
+        <div class="sc-m has-tip ${s.slaPct===null?'':s.slaPct>=80?'ok':s.slaPct>=60?'warn':'danger'}">
+          ${t('SLA compliance','COUNT(met SLA) ÷ COUNT(eligible) × 100','Percentage of this engineer\'s closed cases in <b>'+gfLabel+'</b> that were resolved within the SLA target for their severity. Targets: Critical ≤1d, Medium ≤3d, Low ≤7d, General ≤14d.','Scope: closed cases in selected period')}
+          <div class="v">${s.slaPct!==null?s.slaPct+'%':'—'}</div><div class="l">SLA compliance</div>
+        </div>
+        <div class="sc-m has-tip ${s.unassignedProd>0?'warn':'ok'}">
+          ${t('Unassigned product','COUNT(open where Support Product is blank)','Open cases assigned to this engineer where the Support Product field has not been filled in.','Scope: all time open cases')}
+          <div class="v">${s.unassignedProd}</div><div class="l">No product</div>
+        </div>
+        <div class="sc-m has-tip ${s.unassignedFI>0?'warn':'ok'}">
+          ${t('Unassigned FI','COUNT(open where Customer Acct # = 999)','Open cases assigned to this engineer where the customer account number is 999 — not yet attributed to a specific financial institution.','Scope: all time open cases')}
+          <div class="v">${s.unassignedFI}</div><div class="l">No FI</div>
+        </div>
+      </div>
+
+      <div class="sc-bar-wrap has-tip" style="margin-bottom:10px">
+        ${t('Period resolution rate','COUNT(resolved) ÷ COUNT(assigned) × 100','Of the '+s.assigned+' cases assigned in <b>'+gfLabel+'</b>, '+s.resolved+' have a Resolved Date. The bar and percentage reflect this ratio.','Scope: selected period only')}
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--gray);margin-bottom:3px"><span>Resolved ${s.resolved} of ${s.assigned}</span><span>${s.pct}%</span></div>
+        <div class="bar-mini"><div class="bar-fill" style="width:${s.pct}%;background:${s.bClr}"></div></div>
+      </div>
+
+      <div class="sc-chart-label has-tip">
+        ${t('Monthly case volume','COUNT(Created On in month)','Number of cases created each calendar month in 2026 that are assigned to this engineer. Lighter bars = earlier months, darker = more recent. Hover a bar in the chart for the exact count.','Scope: all time, 2026 calendar year')}
+        Monthly case volume (2026) <span style="font-size:9px;color:var(--blue);font-weight:500">ⓘ</span>
+      </div>
+      <div class="sc-chart-wrap"><canvas id="${cid}"></canvas></div>
+      <button class="sc-email-btn" onclick="emailScorecard('${s.name.replace(/'/g,"\\'")}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
+        Email scorecard
+      </button>
+    </div>`;
+  }).join('');
+
+  // Render mini charts after DOM update
+  requestAnimationFrame(()=>{
+    sorted.forEach(s=>{
+      const cid=`sc-mini-${s.short.replace(/[^a-z]/gi,'')}-${renderID}`;
+      const el=document.getElementById(cid);
+      if(!el)return;
+      const maxV=Math.max(...s.monthVol,1);
+      // colour each bar by recency: Jan/Feb lighter, Mar/Apr full
+      const bgColors=s.monthVol.map((_,i)=>i>=2?'rgba(37,99,235,.85)':'rgba(37,99,235,.3)');
+      mkChart(cid,{type:'bar',data:{labels:monthLabels,datasets:[{
+        data:s.monthVol,backgroundColor:bgColors,borderRadius:3,barPercentage:.65
+      }]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y} cases`}}},scales:{x:{grid:{display:false},ticks:{font:{size:9},color:'#94a3b8'}},y:{display:false,max:maxV*1.2}}}});
+    });
+  });
+}
+
+// ── INSIGHTS ──
+function renderInsights(P){
+  const data=window.D.rawData, today=window.D.today;
+  const K=P.kpis;
+
+  // ── 1. Volume signal vs prior equivalent period ──
+  const periodLen=daysBetween(gfStart,gfEnd)+1;
+  const priorEnd=new Date(gfStart.getTime()-864e5);
+  const priorStart=new Date(priorEnd.getTime()-(periodLen-1)*864e5);
+  const priorPeriod=data.filter(r=>r.created>=priorStart&&r.created<=priorEnd);
+  const priorClosed=data.filter(r=>r.resolved&&r.resolved>=priorStart&&r.resolved<=priorEnd);
+  const volChange=priorPeriod.length>0?Math.round((K.created-priorPeriod.length)/priorPeriod.length*100):null;
+  const closedChange=priorClosed.length>0?Math.round((K.closed-priorClosed.length)/priorClosed.length*100):null;
+  const volDir=volChange===null?'neutral':volChange>15?'alert':volChange>5?'warn':volChange<-5?'good':'neutral';
+  document.getElementById('ins-volume-badge').className='ins-badge '+volDir;
+  document.getElementById('ins-volume-badge').textContent=volChange===null?'No prior data':volChange>0?`+${volChange}% vs prior`:`${volChange}% vs prior`;
+  document.getElementById('ins-volume-body').innerHTML=`
+    <strong>${K.created}</strong> cases created in ${gfLabel} vs <strong>${priorPeriod.length}</strong> in the prior equivalent period.<br>
+    <strong>${K.closed}</strong> cases closed vs <strong>${priorClosed.length}</strong> prior.
+    ${K.net>0?`<br>Net <strong style="color:var(--red)">+${K.net}</strong> cases added to backlog this period.`:K.net<0?`<br>Net <strong style="color:var(--green)">${K.net}</strong> reduction in backlog.`:'<br>Backlog held steady — created and closed in balance.'}`;
+  document.getElementById('ins-volume-action').textContent=K.net>15?'Review case intake sources and consider rebalancing engineer assignments.':K.created>priorPeriod.length*1.2?'Volume spike warrants investigation — check if a specific product or customer is driving the increase.':'Volume is within normal range — no immediate action required.';
+
+  // ── 2. Backlog health ──
+  const openCases=P.openCases;
+  const over90=openCases.filter(r=>r.daysOpen>90).length;
+  const over60=openCases.filter(r=>r.daysOpen>60).length;
+  const pctOver90=openCases.length?Math.round(over90/openCases.length*100):0;
+  const stalest=openCases.length?Math.max(...openCases.map(r=>r.daysOpen)):0;
+  const backlogStatus=pctOver90>40?'alert':pctOver90>20?'warn':'good';
+  document.getElementById('ins-backlog-badge').className='ins-badge '+backlogStatus;
+  document.getElementById('ins-backlog-badge').textContent=pctOver90>40?'Critical':pctOver90>20?'Needs attention':'Healthy';
+  document.getElementById('ins-backlog-body').innerHTML=`
+    <strong>${openCases.length}</strong> total open cases. <strong>${over90}</strong> (${pctOver90}%) are older than 90 days.<br>
+    <strong>${over60}</strong> cases exceed 60 days. Oldest open case: <strong style="color:${stalest>180?'var(--red)':stalest>90?'var(--orange)':'var(--gray)'}">${stalest} days</strong>.`;
+  document.getElementById('ins-backlog-action').textContent=pctOver90>40?`${over90} cases over 90 days require immediate review — prioritise closure or escalation for the longest-running items.`:`Monitor the ${over60} cases exceeding 60 days to prevent further aging. Schedule a backlog review if any are unassigned.`;
+
+  // ── 3. Top customers by case volume ──
+  const custVolMap={};
+  P.period.forEach(r=>{
+    if(r.acct){
+      if(!custVolMap[r.acct]){custVolMap[r.acct]={count:0,company:r.companyProfile||''};}
+      custVolMap[r.acct].count++;
+      if(!custVolMap[r.acct].company&&r.companyProfile)custVolMap[r.acct].company=r.companyProfile;
+    }
+  });
+  const topCusts=Object.entries(custVolMap).sort((a,b)=>b[1].count-a[1].count).slice(0,8);
+  document.getElementById('ins-cust-vol').innerHTML=topCusts.length?`
+    <table class="ins-table"><thead><tr><th>Account</th><th>Company</th><th>Cases</th><th>% of total</th></tr></thead><tbody>
+    ${topCusts.map(([acct,v])=>{
+      const pct=Math.round(v.count/K.created*100);
+      const bar=`<div style="height:4px;background:var(--blue-lt);border-radius:2px;margin-top:2px"><div style="width:${Math.min(pct*3,100)}%;height:100%;background:var(--blue);border-radius:2px"></div></div>`;
+      return`<tr><td style="font-family:var(--mono);font-size:10px">${acct}</td><td style="font-size:11px;color:var(--text2)">${v.company||'—'}</td><td><strong>${v.count}</strong></td><td>${pct}%${bar}</td></tr>`;
+    }).join('')}</tbody></table>`:'<div style="font-size:12px;color:var(--gray);padding:8px 0">No customer account data available for this period.</div>';
+
+  // ── 4. Customers with aged open cases ──
+  const agedCustMap={};
+  openCases.filter(r=>r.daysOpen>30).forEach(r=>{
+    if(!r.acct)return;
+    if(!agedCustMap[r.acct]){agedCustMap[r.acct]={count:0,maxAge:0,company:r.companyProfile||''};}
+    agedCustMap[r.acct].count++;
+    if(r.daysOpen>agedCustMap[r.acct].maxAge)agedCustMap[r.acct].maxAge=r.daysOpen;
+    if(!agedCustMap[r.acct].company&&r.companyProfile)agedCustMap[r.acct].company=r.companyProfile;
+  });
+  const agedCusts=Object.entries(agedCustMap).sort((a,b)=>b[1].maxAge-a[1].maxAge).slice(0,8);
+  document.getElementById('ins-cust-aged').innerHTML=agedCusts.length?`
+    <table class="ins-table"><thead><tr><th>Account</th><th>Company</th><th>Open &gt;30d</th><th>Oldest</th></tr></thead><tbody>
+    ${agedCusts.map(([acct,v])=>{
+      const ageClr=v.maxAge>180?'var(--red)':v.maxAge>90?'var(--orange)':'var(--yellow)';
+      return`<tr><td style="font-family:var(--mono);font-size:10px">${acct}</td><td style="font-size:11px;color:var(--text2)">${v.company||'—'}</td><td><strong>${v.count}</strong></td><td style="font-weight:600;color:${ageClr}">${v.maxAge}d</td></tr>`;
+    }).join('')}</tbody></table>`:'<div style="font-size:12px;color:var(--gray);padding:8px 0">No customers with open cases older than 30 days.</div>';
+
+  // ── 5. Keyword trends in case titles (period) ──
+  const stopWords=new Set(['the','and','for','with','from','this','that','your','have','been','will','into','not','are','was','has','its','our','can','out','but','all','due','via','new','old','per','set','get','add','use','run','fix','how','why','what','when','where','data','case','please','help','need','want','issue','error','request','update','question','regarding','re','fw','fwd','hi','hello','bank']);
+  function extractKeywords(cases){
+    const kw={};
+    cases.forEach(r=>{
+      if(!r.title)return;
+      r.title.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).forEach(w=>{
+        if(w.length>=4&&!stopWords.has(w))kw[w]=(kw[w]||0)+1;
+      });
+    });
+    return Object.entries(kw).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  }
+  const periodKw=extractKeywords(P.period);
+  const maxKw=periodKw[0]?.[1]||1;
+  document.getElementById('ins-keywords').innerHTML=periodKw.length?`
+    <div class="ins-kw-cloud">${periodKw.map(([w,cnt])=>{
+      const intensity=cnt/maxKw;
+      const cls=intensity>0.6?'kw-hot':intensity>0.3?'kw-warm':'kw-cool';
+      return`<span class="ins-kw ${cls}">${w} <span class="kw-count">${cnt}</span></span>`;
+    }).join('')}</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:8px">Word size reflects frequency. Filtered to meaningful terms only.</div>`
+    :'<div style="font-size:12px;color:var(--gray)">Not enough title data.</div>';
+
+  // ── 6. Keywords in aged open cases ──
+  const agedOpen=openCases.filter(r=>r.daysOpen>60);
+  const stuckKw=extractKeywords(agedOpen).slice(0,16);
+  const maxStuck=stuckKw[0]?.[1]||1;
+  document.getElementById('ins-stuck-keywords').innerHTML=stuckKw.length?`
+    <div style="font-size:11px;color:var(--gray);margin-bottom:8px">${agedOpen.length} open cases older than 60 days — recurring terms:</div>
+    <div class="ins-kw-cloud">${stuckKw.map(([w,cnt])=>{
+      const cls=cnt/maxStuck>0.5?'kw-hot':'kw-warm';
+      return`<span class="ins-kw ${cls}">${w} <span class="kw-count">${cnt}</span></span>`;
+    }).join('')}</div>`
+    :'<div style="font-size:12px;color:var(--gray)">No open cases older than 60 days — great position!</div>';
+
+  // ── 7. Resolution time by product ──
+  const prodResMap={};
+  P.closedInPeriod.filter(r=>r.daysToClose!==null).forEach(r=>{
+    const p=r.product||'General';
+    if(!prodResMap[p])prodResMap[p]={total:0,count:0};
+    prodResMap[p].total+=r.daysToClose; prodResMap[p].count++;
+  });
+  const prodRes=Object.entries(prodResMap).map(([p,v])=>({prod:p,avg:Math.round(v.total/v.count*10)/10,count:v.count})).sort((a,b)=>b.avg-a.avg).slice(0,7);
+  const maxAvg=prodRes[0]?.avg||1;
+  document.getElementById('ins-prod-res').innerHTML=prodRes.length?`
+    <table class="ins-table"><thead><tr><th>Product</th><th>Cases</th><th>Avg days</th></tr></thead><tbody>
+    ${prodRes.map(r=>{
+      const clr=r.avg>30?'var(--red)':r.avg>14?'var(--orange)':'var(--green)';
+      const barW=Math.round(r.avg/maxAvg*100);
+      return`<tr><td>${r.prod}</td><td style="color:var(--gray)">${r.count}</td><td><span style="font-weight:600;color:${clr}">${r.avg}d</span><div style="height:4px;background:var(--gray-lt);border-radius:2px;margin-top:2px"><div style="width:${barW}%;height:100%;background:${clr};border-radius:2px"></div></div></td></tr>`;
+    }).join('')}</tbody></table>`:'<div style="font-size:12px;color:var(--gray)">No closed cases with product data in this period.</div>';
+
+  // ── 8. Engineer throughput vs open load ──
+  const staffNames=['Wake, Donovan','Elias, Chris','Lucas, Marcus','Letnikova, Allie','Najm, Charbel','Theodoropoulos, Alexandros','Blakeman, Jarod','Taylor, Jesse','Leal, Shayna'];
+  const engData=staffNames.map(name=>{
+    const assigned=P.period.filter(r=>r.owner===name).length;
+    const closed=P.closedInPeriod.filter(r=>r.owner===name).length;
+    const open=data.filter(r=>r.owner===name&&!r.resolved).length;
+    const ratio=assigned>0?Math.round(closed/assigned*100):0;
+    return{name:name.split(', ')[0],assigned,closed,open,ratio};
+  }).filter(e=>e.assigned>0||e.open>0).sort((a,b)=>b.open-a.open);
+  document.getElementById('ins-eng-load').innerHTML=engData.length?`
+    <table class="ins-table"><thead><tr><th>Engineer</th><th>Assigned</th><th>Closed</th><th>Open</th><th>Close rate</th></tr></thead><tbody>
+    ${engData.map(e=>{
+      const rClr=e.ratio>=50?'var(--green)':e.ratio>=25?'var(--orange)':'var(--red)';
+      const oClr=e.open>30?'var(--red)':e.open>10?'var(--orange)':'var(--text)';
+      return`<tr><td style="font-weight:500">${e.name}</td><td>${e.assigned}</td><td>${e.closed}</td><td style="font-weight:600;color:${oClr}">${e.open}</td><td style="font-weight:600;color:${rClr}">${e.ratio}%</td></tr>`;
+    }).join('')}</tbody></table>`:'<div style="font-size:12px;color:var(--gray)">No engineer data for this period.</div>';
+
+  // ── AI narrative ──
+  document.getElementById('ins-ai-period').textContent=gfLabel;
+  document.getElementById('ins-ai-text').innerHTML=`<div class="ins-loading"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg><span style="color:rgba(255,255,255,.6)">Generating analysis…</span></div>`;
+
+  const aiPayload={
+    period:gfLabel,
+    created:K.created, closed:K.closed, totalOpen:openCases.length,
+    net:K.net, priorCreated:priorPeriod.length, priorClosed:priorClosed.length,
+    volChangePct:volChange, avgDaysToClose:K.avg_days, medianDays:K.median_days,
+    sameDayPct:K.same_day_pct, pct7d:K.pct_7d,
+    openOver90:over90, pctOver90, stalestCase:stalest,
+    topProducts:P.products.labels.slice(0,4).map((l,i)=>({product:l,cases:P.products.counts[i]})),
+    topKeywords:periodKw.slice(0,8).map(([w,c])=>({word:w,count:c})),
+    stuckKeywords:stuckKw.slice(0,6).map(([w,c])=>({word:w,count:c})),
+    worstProductAvgDays:prodRes[0]||null,
+    engineerSummary:engData.slice(0,4).map(e=>({name:e.name,assigned:e.assigned,closed:e.closed,open:e.open,closeRate:e.ratio}))
+  };
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      system:`You are an expert support operations analyst. You write concise, direct, actionable insights for a support manager. Write in second person ("your team", "you should"). Be specific — use the exact numbers provided. Focus on what is notable, concerning, or positive. Output 3-4 short paragraphs of plain text with no markdown, no bullet points, no headers. Total response should be 150-200 words. Start directly with the insight, not with "Based on the data" or similar preamble.`,
+      messages:[{role:'user',content:`Write a concise management briefing based on this support operations data for ${aiPayload.period}: ${JSON.stringify(aiPayload)}`}]
+    })
+  }).then(r=>r.json()).then(d=>{
+    const text=d.content?.[0]?.text||'Analysis unavailable.';
+    document.getElementById('ins-ai-text').innerHTML=text.replace(/\n\n/g,'</p><p style="margin-top:8px">').replace(/^/,'<p>').replace(/$/,'</p>');
+  }).catch(()=>{
+    document.getElementById('ins-ai-text').innerHTML='<span style="color:rgba(255,255,255,.5);font-size:12px">AI analysis unavailable — data insights above are fully accurate and computed directly from your data.</span>';
+  });
+}
+
+// ── Open queue (always all-time) ──
+let qAll=[],qFilt=[],qPg=1,qPS=30,qSK='days_open',qSD=-1;
+function buildQueue(){
+  const today=window.D.today;
+  const openCases=window.D.rawData.filter(r=>!r.resolved).map(r=>({
+    case_num:r.caseNum,title:r.title,owner:r.owner,
+    created:fmtDate(r.created),days_open:daysBetween(r.created,today),status:r.status
+  }));
+  qAll=[...openCases].sort((a,b)=>b.days_open-a.days_open);
+  qFilt=[...qAll]; qPg=1; qSK='days_open'; qSD=-1;
+  const owners=[...new Set(qAll.map(r=>r.owner))].sort();
+  const statuses=[...new Set(qAll.map(r=>r.status))].sort();
+  const oSel=document.getElementById('flt-owner');
+  const sSel=document.getElementById('flt-status');
+  oSel.innerHTML='<option value="">All</option>';
+  sSel.innerHTML='<option value="">All</option>';
+  owners.forEach(o=>{const op=document.createElement('option');op.value=o;op.textContent=o;oSel.appendChild(op);});
+  statuses.forEach(s=>{const op=document.createElement('option');op.value=s;op.textContent=s;sSel.appendChild(op);});
+  document.getElementById('flt-search').value='';
+  document.getElementById('flt-age').value='';
+  renderQ();
+}
+function aBadge(d){if(d<0)return'<span class="badge b-blue">today</span>';if(d>90)return`<span class="badge b-red">${d}d</span>`;if(d>60)return`<span class="badge b-orange">${d}d</span>`;if(d>30)return`<span class="badge b-yellow">${d}d</span>`;return`<span class="badge b-green">${d}d</span>`;}
+function sBadge(s){if(s==='Open')return`<span class="badge b-blue">Open</span>`;if(s==='Waiting on Customer')return`<span class="badge b-orange">Waiting</span>`;if(s==='On Hold')return`<span class="badge b-gray">On Hold</span>`;return`<span class="badge b-gray">${s}</span>`;}
+function filterQ(){
+  const o=document.getElementById('flt-owner').value,s=document.getElementById('flt-status').value;
+  const a=document.getElementById('flt-age').value,q=(document.getElementById('flt-search').value||'').toLowerCase();
+  qFilt=qAll.filter(r=>{
+    if(o&&r.owner!==o)return false;if(s&&r.status!==s)return false;
+    if(a==='90'&&r.days_open<=90)return false;if(a==='60'&&r.days_open<=60)return false;
+    if(a==='30'&&r.days_open<=30)return false;if(a==='7'&&r.days_open>7)return false;
+    if(q&&!r.case_num.toLowerCase().includes(q)&&!r.title.toLowerCase().includes(q)&&!r.owner.toLowerCase().includes(q))return false;
+    return true;
+  });
+  qPg=1;renderQ();
+}
+function sortQ(k){if(qSK===k)qSD*=-1;else{qSK=k;qSD=-1;}renderQ();}
+function renderQ(){
+  qFilt.sort((a,b)=>{const av=a[qSK],bv=b[qSK];return(typeof av==='number'?(av-bv):String(av).localeCompare(String(bv)))*qSD;});
+  const tot=qFilt.length,pages=Math.max(1,Math.ceil(tot/qPS));
+  qPg=Math.min(qPg,pages);
+  const sl=qFilt.slice((qPg-1)*qPS,(qPg-1)*qPS+qPS);
+  document.getElementById('q-count').textContent=tot;
+  document.getElementById('pg-info').textContent=`Page ${qPg} of ${pages}`;
+  document.getElementById('pg-prev').disabled=qPg<=1;document.getElementById('pg-next').disabled=qPg>=pages;
+  document.getElementById('q-tbody').innerHTML=sl.map(r=>`<tr>
+    <td style="font-family:var(--mono);font-size:10px;white-space:nowrap;color:var(--gray)">${r.case_num}</td>
+    <td style="max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.title}</td>
+    <td style="white-space:nowrap;font-size:12px">${r.owner}</td>
+    <td style="white-space:nowrap;font-size:12px;color:var(--gray)">${r.created}</td>
+    <td>${aBadge(r.days_open)}</td><td>${sBadge(r.status)}</td>
+  </tr>`).join('');
+}
+function chPg(d){qPg+=d;renderQ();}
+
+// ── File handling ──
+function parseDate(v){if(!v)return null;if(v instanceof Date)return v;const d=new Date(v);return isNaN(d)?null:d;}
+function daysBetween(a,b){return Math.round((b-a)/(1000*60*60*24));}
+function fmtDate(d){if(!d)return'';const m=d.getMonth()+1,dy=d.getDate(),y=d.getFullYear();return(m<10?'0'+m:m)+'/'+(dy<10?'0'+dy:dy)+'/'+y;}
+function weekKey(d){
+  // Work in local time to avoid UTC conversion shifting the day
+  const day=d.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  const offsetDays=(day+6)%7; // days since Monday
+  const mon=new Date(d.getFullYear(),d.getMonth(),d.getDate()-offsetDays);
+  const y=mon.getFullYear();
+  const m=String(mon.getMonth()+1).padStart(2,'0');
+  const dy=String(mon.getDate()).padStart(2,'0');
+  return`${y}-${m}-${dy}`;
+}
+
+function handleFile(input){
+  const file=input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      processData(rows,file.name);
+      document.getElementById('load-screen').classList.add('hidden');
+      document.getElementById('dashboard').style.display='block';
+      document.getElementById('gf-bar').classList.add('visible');
+      document.getElementById('pdf-btn').style.display='flex';
+      document.getElementById('cfg-btn').style.display='flex';
+      const now=new Date();
+      const stamp=now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+      document.getElementById('last-loaded').innerHTML='<span style="opacity:.45">Data refreshed</span> '+stamp;
+      input.value='';
+    }catch(err){alert('Error reading file: '+err.message);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function processData(rows,filename){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const data=rows.map(r=>{
+    const created=parseDate(r['Created On']);
+    const resolved=parseDate(r['Resolved Date']);
+    const days=r['# of Days From Created to Resolved'];
+    const daysNum=(days!==''&&days!=null&&!isNaN(+days))?+days:null;
+    return{caseNum:r['Case Number']||'',title:String(r['Case Title']||'').slice(0,65),
+      owner:r['Owner']||'',product:String(r['Support Product']||'').trim(),
+      severity:r['Case Severity']||'',status:r['Case Status']||'',
+      acct:String(r['Customer Acct #']||'').trim(),
+      companyProfile:String(r['Company Profile']||'').trim(),
+      created,resolved,daysToClose:daysNum};
+  }).filter(r=>r.created);
+
+  window.D={filename,rawData:data,today};
+  window._qBuilt=false;
+  gfInit();
+}
+
+// ── PDF Export ──
+async function exportPDF(){
+  if(!window.D)return;
+  const btn=document.getElementById('pdf-btn');
+  const origHTML=btn.innerHTML;
+  btn.innerHTML='<svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Building PDF…';
+  btn.disabled=true;
+  const{jsPDF}=window.jspdf;
+  const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),margin=12;
+  function drawHdr(title,sub){
+    pdf.setFillColor(15,34,64);pdf.rect(0,0,pw,18,'F');
+    pdf.setTextColor(255,255,255);pdf.setFontSize(11);pdf.setFont('helvetica','bold');
+    pdf.text('Velocity Support Operations',margin,11);
+    pdf.setFontSize(9);pdf.setFont('helvetica','normal');pdf.setTextColor(180,200,230);
+    pdf.text(title,margin+72,11);pdf.setTextColor(120,150,190);
+    pdf.text(sub,pw-margin,11,{align:'right'});pdf.setTextColor(40,40,40);
+  }
+  async function cap(el,scale=2){return await html2canvas(el,{scale,backgroundColor:'#f8fafc',logging:false,windowWidth:1200});}
+  function addImg(canvas,y,maxH){const W=pw-margin*2;const H=Math.min((canvas.height/canvas.width)*W,maxH);pdf.addImage(canvas.toDataURL('image/png'),'PNG',margin,y,W,H);return H;}
+
+  // Page 1: Overview
+  drawHdr(`Overview — ${gfLabel}`,window.D.filename);
+  const K=computePeriodMetrics(gfStart,gfEnd).kpis;
+  const kD=[{l:'Cases Created',v:K.created,r:0,g:80,b:180},{l:'Cases Closed',v:K.closed,r:22,g:163,b:74},{l:'Total Open',v:K.total_open,r:234,g:88,b:12},{l:'Ready for Review',v:K.rfr,r:0,g:80,b:180},{l:'Resolved All Time',v:K.resolved_all,r:8,g:145,b:178},{l:'Closed ≤7 Days',v:K.pct_7d+'%',r:22,g:163,b:74}];
+  const kW=(pw-margin*2-10)/6;
+  kD.forEach((k,i)=>{const x=margin+i*(kW+2),y=22;pdf.setFillColor(248,250,252);pdf.setDrawColor(226,232,240);pdf.roundedRect(x,y,kW,18,.5,.5,'FD');pdf.setFillColor(k.r,k.g,k.b);pdf.rect(x,y,1.5,18,'F');pdf.setTextColor(k.r,k.g,k.b);pdf.setFontSize(14);pdf.setFont('helvetica','bold');pdf.text(String(k.v),x+4,y+11);pdf.setTextColor(100,116,139);pdf.setFontSize(6.5);pdf.setFont('helvetica','normal');pdf.text(k.l,x+4,y+15.5);});
+  const ov=document.getElementById('sec-overview');
+  ov.style.display='block';
+  const c1=await cap(ov.querySelector('.g2'));const c2=await cap(ov.querySelector('.g3'));
+  const h1=addImg(c1,44,58);addImg(c2,44+h1+3,46);
+
+  // Page 2: Volume
+  pdf.addPage();drawHdr(`Volume Trend — ${gfLabel}`,'Weekly & Daily');
+  const volCard=document.getElementById('sec-volume').querySelector('.card');
+  document.getElementById('sec-volume').style.display='block';
+  const cv=await cap(volCard);const hv=addImg(cv,22,100);
+  const sg=document.getElementById('vol-stats');
+  if(sg.children.length){const cs=await cap(sg);addImg(cs,22+hv+4,22);}
+
+  // Page 3: Aging
+  pdf.addPage();drawHdr(`Aging & Resolution — ${gfLabel}`,'');
+  document.getElementById('sec-aging').style.display='block';
+  const ag=document.getElementById('sec-aging').querySelector('.g2');
+  const ca=await cap(ag);const ha=addImg(ca,22,120);
+  const am=document.getElementById('aging-stats');
+  if(am.children.length){const cam=await cap(am);addImg(cam,22+ha+4,22);}
+
+  // Page 4: Scorecards
+  pdf.addPage();drawHdr(`Engineer Scorecards — ${gfLabel}`,'');
+  document.getElementById('sec-scorecards').style.display='block';
+  const scG=document.getElementById('sc-grid');
+  const csc=await cap(scG,1.8);
+  const scW=pw-margin*2,scH=(csc.height/csc.width)*scW,avail=ph-24;
+  if(scH<=avail){pdf.addImage(csc.toDataURL('image/png'),'PNG',margin,22,scW,scH);}
+  else{const r=csc.width/scW,top=Math.floor(avail*r),t1=document.createElement('canvas');t1.width=csc.width;t1.height=top;t1.getContext('2d').drawImage(csc,0,0,csc.width,top,0,0,csc.width,top);pdf.addImage(t1.toDataURL('image/png'),'PNG',margin,22,scW,avail);pdf.addPage();drawHdr('Engineer Scorecards (continued)','');const bot=csc.height-top,t2=document.createElement('canvas');t2.width=csc.width;t2.height=bot;t2.getContext('2d').drawImage(csc,0,top,csc.width,bot,0,0,csc.width,bot);pdf.addImage(t2.toDataURL('image/png'),'PNG',margin,22,scW,(bot/csc.width)*scW);}
+
+  // Footers
+  const total=pdf.internal.getNumberOfPages();
+  for(let i=1;i<=total;i++){pdf.setPage(i);pdf.setFillColor(248,250,252);pdf.rect(0,ph-8,pw,8,'F');pdf.setDrawColor(226,232,240);pdf.line(0,ph-8,pw,ph-8);pdf.setFontSize(7);pdf.setFont('helvetica','normal');pdf.setTextColor(148,163,184);pdf.text('Velocity Support Operations Dashboard  ·  Exported '+new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),margin,ph-3);pdf.text(`Page ${i} of ${total}`,pw-margin,ph-3,{align:'right'});}
+
+  // Restore
+  ['sec-volume','sec-aging','sec-scorecards'].forEach(id=>{document.getElementById(id).style.display='';});
+  pdf.save('Velocity_Support_Dashboard_'+new Date().toISOString().slice(0,10)+'.pdf');
+  btn.innerHTML=origHTML;btn.disabled=false;
+}
+</script>
+</body>
+</html>
