@@ -4,6 +4,17 @@ All notable changes to the Velocity Support Operations Dashboard are documented 
 
 ---
 
+## [2.2.0] — May 2026
+
+### Changed
+- **Scorecard email subject** — Subject line updated from `Your Support Scorecard — Week of [date]` to `Your Support Scorecard - Period of [period]`, so it correctly reflects the active filter (week, month, quarter, or fiscal year) rather than always showing today's date
+- **Version display** — Version number now appears in two places: the load screen logo bar (`Velocity Solutions · v2.2.0`) and the top navigation bar alongside the dashboard title
+
+### Fixed
+- **Scorecard tooltip clipping** — Tooltips on the Scorecards tab were being truncated against the right and top edges of the viewport when hovering KPI tiles on cards in the right column or near the top of the page. Tooltips now use `position:fixed` and a JavaScript smart-placement listener that measures available viewport space before rendering. They prefer to open above the hovered element and fall back to below when space is insufficient. Horizontal position is clamped so the tooltip never bleeds off the right edge. The caret arrow dynamically repositions to always point back at the centre of the hovered element.
+
+---
+
 ## [2.1] — May 2026
 
 ### Added

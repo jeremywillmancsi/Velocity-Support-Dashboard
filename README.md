@@ -1,6 +1,6 @@
 # Velocity Support Operations Dashboard
 ### README & Feature Documentation
-**FY2027 · Velocity Solutions Support Operations · May 2026**
+**v2.2.0 · FY2027 · Velocity Solutions Support Operations · May 2026**
 
 ---
 
@@ -184,7 +184,7 @@ Each engineer receives one of three tier badges based on three configurable crit
 
 #### Metric Tooltips
 
-Every metric tile and visual bar on the scorecard has a hover tooltip explaining the calculation formula, plain-English description, and scope (period vs. all-time).
+Every metric tile and visual bar on the scorecard has a hover tooltip explaining the calculation formula, plain-English description, and scope (period vs. all-time). Tooltips use smart viewport-aware positioning — they open above the hovered element when space allows, fall back to below when near the top of the screen, and are horizontally clamped so they never bleed off the right edge of the viewport.
 
 ---
 
@@ -248,7 +248,7 @@ Action required sections only appear when there are cases to list. An engineer w
 |---|---|
 | To | Engineer's email address (configured in the Configure panel) |
 | CC | Manager's email address (configured in the Configure panel) |
-| Subject | `Your Support Scorecard — Week of [today's date]` |
+| Subject | `Your Support Scorecard - Period of [active period]` |
 | Sign-off | Manager's name from the Configure panel |
 
 ---
@@ -367,7 +367,7 @@ The dashboard is tested and supported in:
 | Chart.js | 4.4.1 | All charts and graphs |
 | html2canvas | 1.4.1 | Captures DOM sections for PDF export |
 | jsPDF | 2.5.1 | Generates the PDF file |
-| Anthropic API | claude-sonnet-4 | AI narrative on Insights tab |
+| Anthropic API | claude-sonnet-4-20250514 | AI narrative on Insights tab |
 
 All libraries are loaded from the Cloudflare CDN (`cdnjs.cloudflare.com`). An internet connection is required on first load. Subsequent chart rendering and data processing are entirely local.
 
@@ -375,7 +375,7 @@ All libraries are loaded from the Cloudflare CDN (`cdnjs.cloudflare.com`). An in
 
 The dashboard HTML file can be hosted in a SharePoint document library and shared with the team as a URL.
 
-1. Upload `Velocity_Support_Dashboard_v2.html` to a SharePoint document library
+1. Upload `Velocity_Support_Dashboard_v2_2_0.html` to a SharePoint document library
 2. Share the direct file URL with the team (they can bookmark it)
 3. Each team member clicks **Load new data** and selects their local Excel export
 4. To update the dashboard code, simply upload a new version of the HTML file
