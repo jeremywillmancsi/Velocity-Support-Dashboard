@@ -6,11 +6,18 @@ All notable changes to the Velocity Support Operations Dashboard are documented 
 
 ## [2.2.0] — May 2026
 
+### Added
+- **Scorecard PDF attachment (two-step email flow)** — Clicking "Email scorecard" now generates and downloads a portrait A4 PDF of that engineer's scorecard card before opening the pre-filled email. The PDF uses the same navy header and footer style as the full dashboard export and is named `Scorecard_[Engineer]_[Date].pdf`. The user attaches it to the email that opens in their mail client. This is a browser security constraint — the `mailto:` protocol does not support programmatic file attachment; the two-step flow is the standard workaround.
+- **Performance tier badge suppression in PDF exports** — Tier badges (Elite / Strong / Needs Attention) and email buttons are now hidden during both the full dashboard PDF export and individual scorecard PDF generation. A `.pdf-export` CSS class is applied to `<body>` immediately before html2canvas capture and removed immediately after, keeping the live dashboard fully unaffected.
+
 ### Changed
 - **Scorecard email subject** — Subject line updated from `Your Support Scorecard — Week of [date]` to `Your Support Scorecard - Period of [period]`, so it correctly reflects the active filter (week, month, quarter, or fiscal year) rather than always showing today's date
 - **Version display** — Version number now appears in two places: the load screen logo bar (`Velocity Solutions · v2.2.0`) and the top navigation bar alongside the dashboard title
+- **CDN library loading** — Replaced blocking `<script src>` tags with a sequential dynamic async loader. Libraries are fetched one at a time; individual failures are caught and reported without crashing the rest of the app. The main script block is now decoupled from library load order.
 
 ### Fixed
+- **Edge Tracking Prevention crashes** — When Microsoft Edge's Tracking Prevention blocked CDN script requests, the entire app failed silently: `handleFile` and all other functions were never defined, making the dashboard completely unusable. The dynamic loader isolates each library fetch in a try/catch, so a blocked request produces a console warning rather than a fatal parse failure. If any library fails to load, a plain-English message appears on the load screen directing the user to the relevant Edge setting.
+- **`await` in non-async function** — `emailScorecard` used `await html2canvas(...)` but was not declared `async`, causing a `SyntaxError` that prevented the email button from functioning. Function signature corrected to `async function emailScorecard`.
 - **Scorecard tooltip clipping** — Tooltips on the Scorecards tab were being truncated against the right and top edges of the viewport when hovering KPI tiles on cards in the right column or near the top of the page. Tooltips now use `position:fixed` and a JavaScript smart-placement listener that measures available viewport space before rendering. They prefer to open above the hovered element and fall back to below when space is insufficient. Horizontal position is clamped so the tooltip never bleeds off the right edge. The caret arrow dynamically repositions to always point back at the centre of the hovered element.
 
 ---

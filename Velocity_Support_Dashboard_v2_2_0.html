@@ -98,6 +98,9 @@ tr:hover td{background:#fafbfc}
 .sc-product{font-size:11px;color:var(--gray);margin-bottom:4px}
 .tier-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
 .tier-elite{background:#dcfce7;color:#14532d}.tier-strong{background:#dbeafe;color:#1e3a8a}.tier-attention{background:#fee2e2;color:#7f1d1d}
+/* Hide tier badges and email buttons during any PDF capture */
+.pdf-export .tier-badge{display:none!important}
+.pdf-export .sc-email-btn{display:none!important}
 /* Stat tiles */
 .sc-stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
 .sc-stat{background:var(--gray-lt);border-radius:8px;padding:10px 12px}
@@ -531,13 +534,49 @@ input[type=text]{min-width:190px}
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+// ── Library loader — dynamically loads CDN scripts so a blocked request
+//    produces a clear warning rather than killing the entire app ──
+function loadScript(src){
+  return new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src=src;s.onload=resolve;
+    s.onerror=()=>reject(new Error('Failed to load: '+src));
+    document.head.appendChild(s);
+  });
+}
+(async()=>{
+  const libs=[
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  ];
+  const failed=[];
+  for(const src of libs){
+    try{await loadScript(src);}
+    catch(e){failed.push(src);console.warn(e.message);}
+  }
+  if(failed.length){
+    // Show a non-fatal warning on the load screen if any library failed
+    const hint=document.querySelector('.ls-hint');
+    if(hint)hint.innerHTML='⚠ One or more libraries failed to load from CDN.<br>If using Edge, go to Settings &rsaquo; Privacy &rsaquo; turn off Tracking Prevention, or open via a web server.';
+  }
+  // Initialise the app regardless — functions will guard against missing libs at call time
+  initApp();
+})();
+</script>
 <script>
 
 // ── Chart registry ──
+// initApp() is called by the library loader once all CDN scripts have loaded.
+// All functions below are defined globally at parse time; libraries are only
+// accessed when the user actually loads data or triggers an export, so lazy
+// loading is safe. initApp just marks the app as ready.
+function initApp(){
+  window._libsReady=true;
+}
+
 let charts={};
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 function mkChart(id,cfg){destroyChart(id);const c=new Chart(document.getElementById(id).getContext('2d'),cfg);charts[id]=c;return c;}
@@ -594,7 +633,7 @@ function populateEmailFields(){
     </div>`).join('');
 }
 
-function emailScorecard(engineerName){
+async function emailScorecard(engineerName){
   if(!window.D||!gfStart){alert('Please load data first.');return;}
 
   const cfg=loadEmailConfig();
@@ -719,7 +758,50 @@ function emailScorecard(engineerName){
   const subject=`Your Support Scorecard - Period of ${gfLabel}`;
   let mailto=`mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   if(ccEmail)mailto+=`&cc=${encodeURIComponent(ccEmail)}`;
-  window.open(mailto,'_blank');
+
+  // ── Step 1: generate and download the individual scorecard PDF ──
+  try{
+    const cardEl=document.querySelector(`.sc-card[data-engineer="${engineerName}"]`);
+    if(cardEl){
+      const{jsPDF}=window.jspdf;
+      const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+      const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),margin=14;
+
+      // Navy header band
+      pdf.setFillColor(15,34,64);pdf.rect(0,0,pw,18,'F');
+      pdf.setTextColor(255,255,255);pdf.setFontSize(11);pdf.setFont('helvetica','bold');
+      pdf.text('Velocity Support Operations',margin,11);
+      pdf.setFontSize(9);pdf.setFont('helvetica','normal');pdf.setTextColor(180,200,230);
+      pdf.text(`Scorecard — ${gfLabel}`,margin+72,11);
+      pdf.setTextColor(120,150,190);
+      pdf.text(new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),pw-margin,11,{align:'right'});
+
+      // Suppress tier badge and email button for the capture
+      document.body.classList.add('pdf-export');
+      const canvas=await html2canvas(cardEl,{scale:2.2,backgroundColor:'#ffffff',logging:false,windowWidth:1200});
+      document.body.classList.remove('pdf-export');
+
+      const imgW=pw-margin*2;
+      const imgH=(canvas.height/canvas.width)*imgW;
+      pdf.addImage(canvas.toDataURL('image/png'),'PNG',margin,22,imgW,Math.min(imgH,ph-32));
+
+      // Footer
+      pdf.setFillColor(248,250,252);pdf.rect(0,ph-8,pw,8,'F');
+      pdf.setDrawColor(226,232,240);pdf.line(0,ph-8,pw,ph-8);
+      pdf.setFontSize(7);pdf.setTextColor(148,163,184);
+      pdf.text('Velocity Support Operations Dashboard  ·  Exported '+new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),margin,ph-3);
+      pdf.text('Page 1 of 1',pw-margin,ph-3,{align:'right'});
+
+      const safeName=engineerName.replace(/[^a-z0-9]/gi,'_');
+      const dateStr=new Date().toISOString().slice(0,10);
+      pdf.save(`Scorecard_${safeName}_${dateStr}.pdf`);
+    }
+  }catch(err){
+    console.warn('Scorecard PDF generation failed:',err);
+  }
+
+  // ── Step 2: open mailto (slight delay lets the PDF save dialog appear first) ──
+  setTimeout(()=>window.open(mailto,'_blank'),400);
 }
 
 function toggleConfig(){
@@ -1193,7 +1275,7 @@ function renderScorecards(P){
     const p7Clr=s.p7_pct>=70?'var(--green)':s.p7_pct>=50?'var(--orange)':'var(--red)';
     const avgClr=s.avg_days>30?'var(--red)':s.avg_days>14?'var(--orange)':'var(--green)';
     const t=(label,formula,body,scope)=>`<div class="tip"><div class="tip-label">${label}</div><div class="tip-formula">${formula}</div>${body}<div class="tip-scope">${scope}</div></div>`;
-    return `<div class="sc-card ${flag(s)}">
+    return `<div class="sc-card ${flag(s)}" data-engineer="${s.name.replace(/"/g,'&quot;')}">
       <div class="sc-header">
         <div class="sc-avatar" style="background:${s.bgClr};color:${s.txtClr}">${initials(s.name)}</div>
         <div class="sc-header-info">
@@ -1548,6 +1630,7 @@ function weekKey(d){
 }
 
 function handleFile(input){
+  if(!window.XLSX){alert('Required libraries are still loading or failed to load. Please check your network connection and refresh the page.');return;}
   const file=input.files[0]; if(!file)return;
   const reader=new FileReader();
   reader.onload=function(e){
@@ -1642,7 +1725,9 @@ async function exportPDF(){
   pdf.addPage();drawHdr(`Engineer Scorecards — ${gfLabel}`,'');
   document.getElementById('sec-scorecards').style.display='block';
   const scG=document.getElementById('sc-grid');
+  document.body.classList.add('pdf-export');
   const csc=await cap(scG,1.8);
+  document.body.classList.remove('pdf-export');
   const scW=pw-margin*2,scH=(csc.height/csc.width)*scW,avail=ph-24;
   if(scH<=avail){pdf.addImage(csc.toDataURL('image/png'),'PNG',margin,22,scW,scH);}
   else{const r=csc.width/scW,top=Math.floor(avail*r),t1=document.createElement('canvas');t1.width=csc.width;t1.height=top;t1.getContext('2d').drawImage(csc,0,0,csc.width,top,0,0,csc.width,top);pdf.addImage(t1.toDataURL('image/png'),'PNG',margin,22,scW,avail);pdf.addPage();drawHdr('Engineer Scorecards (continued)','');const bot=csc.height-top,t2=document.createElement('canvas');t2.width=csc.width;t2.height=bot;t2.getContext('2d').drawImage(csc,0,top,csc.width,bot,0,0,csc.width,bot);pdf.addImage(t2.toDataURL('image/png'),'PNG',margin,22,scW,(bot/csc.width)*scW);}
